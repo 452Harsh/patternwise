@@ -1,0 +1,23 @@
+# OPTIONAL Render Blueprint: self-hosted model server (Gemma 4 + EmbeddingGemma via Ollama, CPU).
+# Not needed when the app uses hosted Gemma (Google AI Studio + Hugging Face). Needs an 8 GB instance.
+# To use it, create a Blueprint in Render and set the blueprint path to deploy/render-ollama/render.yaml.
+# The app then calls it with AI_BASE_URL=https://<service>.onrender.com and AI_API_KEY=<COACH_API_KEY>.
+services:
+  - type: web
+    name: patternwise-gemma
+    runtime: docker
+    dockerfilePath: ./deploy/render-ollama/Dockerfile
+    dockerContext: ./deploy/render-ollama
+    region: singapore
+    plan: pro plus
+    healthCheckPath: /healthz
+    autoDeploy: false
+    envVars:
+      - key: COACH_API_KEY
+        generateValue: true
+      - key: PULL_MODELS
+        value: gemma4:e2b-it-qat embeddinggemma
+    disk:
+      name: ollama-models
+      mountPath: /root/.ollama
+      sizeGB: 10

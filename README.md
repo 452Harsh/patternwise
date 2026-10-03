@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/452Harsh/patternwise/actions/workflows/ci.yml/badge.svg)](https://github.com/452Harsh/patternwise/actions/workflows/ci.yml)
 
-A personal, pattern-first preparation workspace for **DSA** (data structures and algorithms) and **System Design** (HLD and LLD). It combines a curated curriculum with a tracker built around recognition, spaced-repetition revision, daily plans, notes, workspaces and analytics.
+A personal, pattern-first preparation workspace for **DSA** (data structures and algorithms) and **System Design** (HLD and LLD). It combines a curated curriculum with a tracker built around recognition, spaced-repetition revision, daily plans, notes, workspaces and analytics, plus an **AI interview coach** that runs on open-weight models and answers: *"Given everything I've practised, what should I do today?"*
 
 It's built with Next.js 16, React 19 and TypeScript, styled with Tailwind CSS v4 and shadcn/ui on Base UI, and stores data in MongoDB. It's a single-user app that you sign in to with a password.
 
@@ -28,8 +28,14 @@ Most practice tracking is a checklist of problems. Patternwise is organised arou
 - **Revision and completion:** rate items from Forgot to Mastered, Mark as complete, stop or resume reviews per item, and a timed interview mode with debriefs.
 - **Tracking:** its own dashboard, plan, revision, progress, analytics and notes.
 
+**AI Coach module** (`/coach`)
+- **Today's plan:** a deterministic engine analyses attempts, hints, failures, ratings, reviews and recency, and explains every priority. It knows when *not* to give you another problem.
+- **Open models:** Gemma 4 E2B explains the plan, answers questions about your own history, spots patterns, gives progressive hints, grades your explanations and acts as a DSA/HLD/LLD interviewer.
+- **RAG:** EmbeddingGemma vectors over the curriculum, with MongoDB Atlas Vector Search.
+- **Private and swappable:** runs locally with Ollama (private, free, offline). You can swap in any OpenAI-compatible open-model host.
+
 **Shared**
-- **Module switching:** the two modules are independent, with a switcher (`G 1` / `G 2`), and search and shortcuts are scoped to the active module (`⌘K`, `G` + key, `?`).
+- **Module switching:** DSA and System Design are independent, and AI Coach is the third module (`G 1` / `G 2` / `G 3`), and search and shortcuts are scoped to the active module (`⌘K`, `G` + key, `?`).
 - **Sync:** edits apply instantly and save in the background. Unsaved edits survive going offline.
 - **Look and layout:** dark-first, responsive (the mobile layout has bottom tabs).
 - **Settings:** export and import JSON backups.
@@ -55,6 +61,10 @@ npm run dev                  # http://localhost:3000 → sign in with APP_PASSWO
 | `npm run lint` | ESLint (including the React Compiler rules) |
 | `npm run check:data` | Curriculum integrity checks for DSA and System Design |
 | `npm run verify:links` | Verifies every DSA problem slug against LeetCode |
+| `npm run check:coach` | Deterministic checks of the AI Coach recommendation engine |
+| `npm run coach:index` | Builds the AI Coach knowledge index (curriculum → embeddings → Atlas Vector Search) |
+
+**AI Coach (optional):** `brew install ollama && ollama serve`, then `ollama pull gemma4:e2b-it-qat && ollama pull embeddinggemma`. Open `/coach` and click the status chip → **Build knowledge base**. The `AI_*` variables in `.env.example` switch models or point at a hosted open-model server.
 
 Deployment: Vercel plus MongoDB Atlas. See [docs/development.md](docs/development.md#2-deploying-to-vercel).
 
@@ -69,6 +79,7 @@ Deployment: Vercel plus MongoDB Atlas. See [docs/development.md](docs/developmen
 | Backend | Next.js route handlers on the Node.js runtime |
 | Database | MongoDB Atlas via the official `mongodb` 7 driver |
 | Validation | zod 4 |
+| AI | Gemma 4 E2B + EmbeddingGemma (open weights) via Ollama or any OpenAI-compatible server; MongoDB Atlas Vector Search; react-markdown |
 | Tooling | ESLint (`eslint-config-next`), `tsx` for scripts |
 
 ## How it fits together
@@ -98,6 +109,7 @@ The curriculum ships in the bundle. Only your progress, notes, workspaces, diagr
 | [docs/ui-architecture.md](docs/ui-architecture.md) | Design system, tokens, reusable components, shell, UI conventions |
 | [docs/development.md](docs/development.md) | Setup, env, Vercel, folder structure, conventions, how-tos, **guide for AI assistants** |
 | [docs/roadmap.md](docs/roadmap.md) | **Current state**: implemented, partial and missing; known bugs; tech debt; next steps; what not to change |
+| [docs/ai-coach.md](docs/ai-coach.md) | AI Coach: recommendation engine, signals, model choice, RAG, prompts, feedback loop |
 | [docs/decisions.md](docs/decisions.md) | Why things are built the way they are |
 
 New to the codebase? Read `architecture.md`, then `development.md`, then the doc for the module you're changing. **AI assistants** should also read `AGENTS.md` (Next.js 16 differs from older versions) and §7 of `development.md`.

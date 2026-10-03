@@ -48,7 +48,7 @@ export function AppSidebar() {
   const mod = useModule();
   const badges = useRevisionBadges();
   const userCollapsed = state.settings.sidebarCollapsed;
-  const { current } = streaks(state, mod);
+  const { current } = streaks(state, mod === "coach" ? "all" : mod);
   const name = state.settings.name || "You";
 
   // Collapsed = user preference, or automatically on md..lg widths (via the `lg:` classes below).

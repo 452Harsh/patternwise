@@ -32,6 +32,7 @@ import {
 import { TopicIcon } from "@/components/topic-icon";
 import { allPatterns, topics } from "@/data/curriculum";
 import { useCatalog } from "@/lib/catalog";
+import { CoachPick } from "@/components/coach/coach-pick";
 import { greeting, relativeDay } from "@/lib/format";
 import { displayStatus, isDue, needsRevisit, useHydrated, useStore } from "@/lib/progress";
 import { overview, solvedSince, streaks } from "@/lib/stats";
@@ -124,6 +125,8 @@ export default function Dashboard() {
           </Link>
         )}
       </header>
+
+      <CoachPick ctx="dsa" />
 
       <section aria-labelledby="overview" className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <h2 id="overview" className="sr-only">

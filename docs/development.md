@@ -19,6 +19,7 @@ npm run dev                    # http://localhost:3000 → sign in with APP_PASS
 | `MONGODB_URI` | yes | Atlas connection string; URL-encode special characters in the password |
 | `MONGODB_DB` | no (default `patternwise`) | Database name; use a throwaway name such as `patternwise_test` for experiments |
 | `APP_PASSWORD` | yes | The password typed on `/login` |
+| `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_NUM_CTX`, `AI_EMBED_*` | no | AI Coach model settings; defaults run Gemma 4 E2B + EmbeddingGemma on local Ollama. See [`ai-coach.md`](ai-coach.md) |
 | `SESSION_SECRET` | yes | 32+ random characters that sign the session cookie. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Changing it signs everyone out. |
 
 `.gitignore` excludes `.env*` but keeps `.env.example`.
@@ -31,11 +32,26 @@ npm run dev                    # http://localhost:3000 → sign in with APP_PASS
 | `npm run build` / `npm start` | Production build / server |
 | `npm run lint` | ESLint (`eslint-config-next` core-web-vitals + TypeScript, which include the React Compiler rules) |
 | `npm run check:data` | Curriculum integrity for DSA and SD: unique ids and slugs, all cross-references resolve, every pattern has transfer notes and complexity, coverage and study-plan references are valid |
+| `npm run check:coach` | Deterministic checks of the AI Coach recommendation engine (stop rule, revision, difficulty moves, time budget, module separation) |
+| `npm run coach:index` | Build or refresh the AI Coach knowledge index (needs the embedding model running) |
 | `npm run verify:links` | Checks every DSA slug against LeetCode's public GraphQL API (needs network access) |
 
-**Before you push:** `npm run lint && npm run check:data && npm run build`.
+**Before you push:** `npm run lint && npm run check:data && npm run check:coach && npm run build`.
 
-## 2. Deploying to Vercel
+**AI Coach locally:** `brew install ollama && ollama serve`, then `ollama pull gemma4:e2b-it-qat` and `ollama pull embeddinggemma`. Open `/coach`, then use the status chip to **Build knowledge base**.
+
+## 2. Deploying to Render (recommended)
+
+`render.yaml` at the repo root is a Render Blueprint for the web app (Node runtime, Singapore region, Starter plan). The server runs `npm start`, and Next.js reads the port from Render's `PORT` variable. Idle memory is about 120 MB.
+
+1. In Render, choose **New → Blueprint**, select the repo, and Render reads `render.yaml`.
+2. Fill in the secrets it asks for: `MONGODB_URI`, `APP_PASSWORD`, `AI_API_KEY` (Google AI Studio) and `AI_EMBED_API_KEY` (Hugging Face). `SESSION_SECRET` is generated automatically.
+3. In Atlas → Network Access, allow Render's outbound IPs, or `0.0.0.0/0`.
+4. Pushes to `main` redeploy automatically. A long-lived server has no per-request time limit, so coach replies can stream as long as they need.
+
+`deploy/render-ollama/` (with its own `render.yaml`) is an **optional** self-hosted model server: Ollama behind a key-checking Caddy proxy on an 8 GB instance. It's not needed with hosted Gemma.
+
+## 2b. Deploying to Vercel (alternative)
 
 1. Import the GitHub repository (`patternwise`). The framework is detected as Next.js and the root directory is the repo root.
 2. Add the four environment variables for Production (and Preview if you use it). Point Preview at a separate `MONGODB_DB` if you don't want previews writing to your real data.
@@ -129,7 +145,7 @@ Add it to `Settings` and `DEFAULT_SETTINGS` (`lib/progress.ts`) and to `Settings
 ## 6. Testing
 
 **CI (GitHub Actions).**
-- `.github/workflows/ci.yml` runs on every push to `main`, on pull requests, and on demand. It does `npm ci`, then lint, type-check, `check:data` and a production build. It needs no secrets, because the database and password are only read at runtime.
+- `.github/workflows/ci.yml` runs on every push to `main`, on pull requests, and on demand. It does `npm ci`, then lint, type-check, `check:data`, `check:coach` and a production build. It needs no secrets, because the database, password and model are only read at runtime.
 - `.github/workflows/verify-links.yml` runs `verify:links` every Monday (and on demand). It's kept separate because it depends on LeetCode being reachable.
 
 Beyond CI there are **no browser (e2e) tests in the repo** (see [`roadmap.md`](roadmap.md)). Current practice:
@@ -163,6 +179,10 @@ Beyond CI there are **no browser (e2e) tests in the repo** (see [`roadmap.md`](r
 | A reusable DSA/shared component | `components/` |
 | An SD component | `components/sd/` |
 | A shell or navigation behaviour | `components/shell/` |
+| AI Coach logic (priorities, plan) | `lib/coach/*` (pure; add a check to `scripts/check-coach.ts`) |
+| An AI provider or model | `lib/ai/providers/*` + `lib/ai/index.ts` |
+| Coach prompts / context / retrieval | `lib/server/coach/*`, `lib/server/rag/*` |
+| A coach page | `app/(app)/coach/<route>/page.tsx` + `MODULES.coach` |
 | A server endpoint | `app/api/<name>/route.ts` using the `lib/server/http.ts` helpers (`json`, `isAuthed`, `isJson`, `serverError`) |
 
 **Extend, don't duplicate**
@@ -187,3 +207,4 @@ Beyond CI there are **no browser (e2e) tests in the repo** (see [`roadmap.md`](r
 - Keep the `PatchSchema` caps. Don't widen them without considering the 16 MB MongoDB document limit and the payload size.
 - Keep `proxy.ts` gating everything except `/api/auth/*` and static assets, and keep the JSON-only check on mutating endpoints.
 - Don't reintroduce "FAANG" wording.
+- AI Coach: the deterministic engine computes every user statistic; prompts only receive them. Keep coach requests module-scoped (`ctx`). Never add user data to the `knowledge` collection.

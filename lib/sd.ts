@@ -1,37 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { SD_ITEMS, categoriesFor, conceptById, conceptsIn, sdKey, type SDItem } from "@/data/sd";
+import { categoriesFor, conceptById, conceptsIn, sdKey, type SDItem } from "@/data/sd";
 import { SD_PHASES } from "@/data/sd/study-plan";
 import type { SDTrack } from "@/data/sd/types";
 import { isSDDue, useStore, type SDEntry, type State } from "./progress";
+import { sdItemsFor } from "./sd-items";
 
 /* ---------- catalog incl. custom problems and diagrams ---------- */
 
-export function sdItemsFor(state: State): SDItem[] {
-  const custom: SDItem[] = state.sdCustom.map((c) => ({
-    key: sdKey("problem", c.id),
-    kind: "problem",
-    id: c.id,
-    track: c.track,
-    title: c.title,
-    group: c.track === "hld" ? "HLD problem" : "LLD problem",
-    href: `/system-design/problems/${c.id}`,
-    difficulty: c.difficulty,
-    summary: c.statement,
-  }));
-  const diagrams: SDItem[] = Object.values(state.diagrams).map((d) => ({
-    key: sdKey("diagram", d.id),
-    kind: "diagram",
-    id: d.id,
-    track: "hld",
-    title: d.title,
-    group: "Architecture diagram",
-    href: `/system-design/architecture/${d.id}`,
-    summary: d.notes || `${d.nodes.length} components · ${d.edges.length} connections`,
-  }));
-  return [...SD_ITEMS, ...custom, ...diagrams];
-}
+// The pure catalog builder lives in lib/sd-items.ts so server code can use it.
+export { sdItemsFor };
 
 export function useSDItems(): SDItem[] {
   const state = useStore();

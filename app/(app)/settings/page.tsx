@@ -161,12 +161,13 @@ export default function SettingsPage() {
               <Kbd>G</Kbd>
               <Kbd>1</Kbd>
               <span className="mx-1 text-muted-foreground">/</span>
-              <Kbd>G</Kbd>
               <Kbd>2</Kbd>
+              <span className="mx-1 text-muted-foreground">/</span>
+              <Kbd>3</Kbd>
             </span>
           </div>
         </div>
-        <div className="mt-5 grid grid-cols-1 gap-x-10 gap-y-6 text-sm md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-x-10 gap-y-6 text-sm md:grid-cols-3">
           {MODULE_LIST.map((m) => (
             <div key={m.id}>
               <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{m.label}</p>

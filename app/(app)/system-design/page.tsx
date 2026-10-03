@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { DailyPlan } from "@/components/daily-plan";
 import { DifficultyBadge, EmptyState, Meter, PageHeader, Panel, SectionTitle, Shimmer, masteryTone, pct } from "@/components/kit";
 import { Metric } from "@/components/metric";
+import { CoachPick } from "@/components/coach/coach-pick";
 import { SDStatusBadge, TrackTag } from "@/components/sd/sd-kit";
 import { HLD_PATTERNS, LLD_PATTERNS } from "@/data/sd";
 import { relativeDay } from "@/lib/format";
@@ -70,6 +71,8 @@ export default function SystemDesignOverview() {
           </>
         }
       />
+
+      <CoachPick ctx="sd" />
 
       <section aria-label="System Design progress" className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <Metric icon={Orbit} label="Overall progress" value={pct(o.overall)} sub="HLD + LLD mastery" progress={o.overall} />

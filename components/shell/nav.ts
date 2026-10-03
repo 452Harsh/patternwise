@@ -16,13 +16,16 @@ import {
   RotateCcw,
   Settings,
   Shapes,
+  Sparkles,
+  Target,
+  MessageCircleQuestion,
   SquareDashedKanban,
   Timer,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
 
-export type ModuleId = "dsa" | "sd";
+export type ModuleId = "dsa" | "sd" | "coach";
 
 export interface NavItem {
   href: string;
@@ -144,8 +147,38 @@ const SD: ModuleDef = {
   ],
 };
 
-export const MODULES: Record<ModuleId, ModuleDef> = { dsa: DSA, sd: SD };
-export const MODULE_LIST: ModuleDef[] = [DSA, SD];
+/** AI Coach: reads both modules' progress, but each coach page works in one module context at a time. */
+const COACH: ModuleDef = {
+  id: "coach",
+  label: "AI Coach",
+  short: "Coach",
+  description: "Personal interview coach",
+  icon: Sparkles,
+  home: "/coach",
+  groups: [
+    {
+      id: "coach",
+      items: [
+        { href: "/coach", label: "Today's Plan", icon: CalendarRange, key: "d", exact: true },
+        { href: "/coach/ask", label: "Ask Coach", icon: MessageCircleQuestion, key: "a" },
+        { href: "/coach/interview", label: "Interview Mode", icon: Timer, key: "i" },
+        { href: "/coach/weak-areas", label: "My Weak Areas", icon: Target, key: "w" },
+      ],
+    },
+  ],
+  tabs: [
+    { href: "/coach", label: "Today", icon: CalendarRange, exact: true },
+    { href: "/coach/ask", label: "Ask", icon: MessageCircleQuestion },
+    { href: "/coach/interview", label: "Interview", icon: Timer },
+    { href: "/coach/weak-areas", label: "Weak areas", icon: Target },
+  ],
+};
+
+export const MODULES: Record<ModuleId, ModuleDef> = { dsa: DSA, sd: SD, coach: COACH };
+export const MODULE_LIST: ModuleDef[] = [DSA, SD, COACH];
+
+/** Keyboard digit for "G <n>" module switching. */
+export const moduleDigit = (m: ModuleId) => String(MODULE_LIST.findIndex((x) => x.id === m) + 1);
 
 /** Shared across both modules. */
 export const SHARED_NAV: NavItem[] = [{ href: "/settings", label: "Settings", icon: Settings, key: "," }];
@@ -153,7 +186,12 @@ export const SHARED_NAV: NavItem[] = [{ href: "/settings", label: "Settings", ic
 /** Shared routes don't belong to a module; the shell keeps showing the last module. */
 export const isSharedRoute = (pathname: string) => SHARED_NAV.some((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
 
-export const moduleForPath = (pathname: string): ModuleId => (pathname === "/system-design" || pathname.startsWith("/system-design/") ? "sd" : "dsa");
+export const moduleForPath = (pathname: string): ModuleId =>
+  pathname === "/system-design" || pathname.startsWith("/system-design/")
+    ? "sd"
+    : pathname === "/coach" || pathname.startsWith("/coach/")
+      ? "coach"
+      : "dsa";
 
 export const navItems = (m: ModuleId): NavItem[] => [...MODULES[m].groups.flatMap((g) => g.items), ...SHARED_NAV];
 

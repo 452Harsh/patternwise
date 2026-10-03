@@ -116,16 +116,17 @@ export function topicStat(topic: Topic, progress: ProgressMap) {
 
 /* ---------- activity & streaks ---------- */
 
-export type Scope = "dsa" | "sd";
+export type Scope = "dsa" | "sd" | "all";
 
 /** Days with activity: DSA attempts + DSA mock interviews, or System Design reviews/practice/sessions. */
 export function activityByDay(state: State, scope: Scope = "dsa"): Map<string, number> {
   const counts = new Map<string, number>();
   const bump = (d: string) => counts.set(d, (counts.get(d) ?? 0) + 1);
-  if (scope === "dsa") {
+  if (scope !== "sd") {
     for (const e of Object.values(state.problems)) for (const h of e.history) bump(h.date);
     for (const m of state.mocks) bump(m.date);
-  } else {
+  }
+  if (scope !== "dsa") {
     for (const e of Object.values(state.sd)) for (const h of e.history) bump(h.date);
   }
   return counts;

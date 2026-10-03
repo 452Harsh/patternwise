@@ -1,21 +1,44 @@
-# Render Blueprint: the AI Coach's open-weight model server (Gemma 4 + EmbeddingGemma via Ollama).
-# The Next.js app itself stays on Vercel; it calls this service with AI_BASE_URL + AI_API_KEY.
+# Render Blueprint: the Patternwise web app (Next.js, Node runtime).
+# The AI Coach uses hosted open-weight Gemma: Gemma 4 on Google AI Studio for chat and
+# EmbeddingGemma on Hugging Face for retrieval (MongoDB Atlas Vector Search).
+# Secrets are marked `sync: false`: Render asks for them when you create the Blueprint.
 services:
   - type: web
-    name: patternwise-gemma
-    runtime: docker
-    dockerfilePath: ./deploy/render-ollama/Dockerfile
-    dockerContext: ./deploy/render-ollama
+    name: patternwise
+    runtime: node
     region: singapore
-    plan: pro plus
-    healthCheckPath: /healthz
-    autoDeploy: false
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /login
+    autoDeploy: true
     envVars:
-      - key: COACH_API_KEY
+      - key: NODE_VERSION
+        value: "24"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # Database and login
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: patternwise
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
         generateValue: true
-      - key: PULL_MODELS
-        value: gemma4:e2b-it-qat embeddinggemma
-    disk:
-      name: ollama-models
-      mountPath: /root/.ollama
-      sizeGB: 10
+      # AI Coach: chat (Gemma 4 via Google AI Studio's OpenAI-compatible API)
+      - key: AI_PROVIDER
+        value: openai-compatible
+      - key: AI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: AI_MODEL
+        value: gemma-4-26b-a4b-it
+      - key: AI_API_KEY
+        sync: false
+      # AI Coach: embeddings (EmbeddingGemma via Hugging Face Inference)
+      - key: AI_EMBED_PROVIDER
+        value: huggingface
+      - key: AI_EMBED_MODEL
+        value: google/embeddinggemma-300m
+      - key: AI_EMBED_API_KEY
+        sync: false

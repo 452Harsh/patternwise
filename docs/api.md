@@ -63,3 +63,19 @@ Applies a **change set** validated by `PatchSchema` (`lib/server/schemas.ts`). E
 | 401 / 415 / 500 | errors as above |
 
 The client builds patches with `diff()` in `lib/progress.ts`; you should not need to call this endpoint by hand. To add a new kind of user data, see “Adding persisted data” in [`development.md`](development.md).
+
+---
+
+## AI Coach endpoints
+
+All require the session cookie; mutating calls require JSON. Full behaviour in [`ai-coach.md`](ai-coach.md).
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/coach/chat` | Body `{ ctx: "dsa"\|"sd", mode: "plan"\|"ask"\|"recognize"\|"hints"\|"explain"\|"interview", date, threadId?, messages[], ref? }` (`ChatRequestSchema` in `lib/server/coach/orchestrate.ts`). Streams `text/plain`. Headers: `X-Coach-Model`, `X-Coach-Retrieval` (`atlas-vector-search` \| `in-memory-vectors` \| `keyword` \| `none`), `X-Coach-Sources` (URI-encoded JSON `[{title, href}]`). A model failure mid-stream appends `[coach-error] <message>`. User facts are recomputed server-side from MongoDB, never taken from the request. |
+| `GET /api/coach/plan?date=` | Saved plan for the day: `{ plan: CoachPlan \| null, explanations }` |
+| `POST /api/coach/plan` | `{ date }` → computes the plan from stored progress, saves it (clearing explanations) and returns it |
+| `GET /api/coach/status` | `{ provider, model, embedModel, ok, detail, knowledge: { documents, expected, embedModel, index } }` |
+| `POST /api/coach/knowledge` | (Re)builds the knowledge index → `{ total, embedded, unchanged, removed, dimensions, vectorIndex }`; `503` if the embedding model is unreachable |
+| `GET /api/coach/threads?ctx=&mode=` / `?id=` | List recent conversations / read one |
+| `DELETE /api/coach/threads` | `{ id }` |
