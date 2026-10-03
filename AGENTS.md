@@ -37,7 +37,7 @@ npm run check:data   # curriculum integrity (DSA + SD)
 npm run build        # production build (type-checks)
 ```
 
-Before finishing a change, run `npm run lint && npm run check:data && npm run build`. There is no automated test suite yet.
+Before finishing a change, run `npm run lint && npm run check:data && npm run build`. CI (`.github/workflows/ci.yml`) runs the same checks on every push; there are no browser tests in the repo yet.
 
 ## Where things go
 

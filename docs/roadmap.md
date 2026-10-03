@@ -57,7 +57,8 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 
 ## 3. Not implemented
 
-- [ ] Automated tests (unit, integration or e2e) and CI
+- [x] CI: GitHub Actions runs lint, type-check, curriculum checks and the build on every push and PR; LeetCode links are re-verified weekly
+- [ ] Automated browser (e2e) tests in the repo
 - [ ] Multiple users or accounts (no `users` collection, no `userId`)
 - [ ] Password change from the UI (the password is the `APP_PASSWORD` env var)
 - [ ] Real-time sync between devices (same-browser tabs already share state)

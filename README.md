@@ -1,5 +1,7 @@
 # Patternwise
 
+[![CI](https://github.com/452Harsh/patternwise/actions/workflows/ci.yml/badge.svg)](https://github.com/452Harsh/patternwise/actions/workflows/ci.yml)
+
 A personal, pattern-first preparation workspace for **DSA** (data structures and algorithms) and **System Design** (HLD and LLD). It combines a curated curriculum with a tracker built around recognition, spaced-repetition revision, daily plans, notes, workspaces and analytics.
 
 It's built with Next.js 16, React 19 and TypeScript, styled with Tailwind CSS v4 and shadcn/ui on Base UI, and stores data in MongoDB. It's a single-user app that you sign in to with a password.

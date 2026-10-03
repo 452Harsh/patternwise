@@ -1,0 +1,31 @@
+name: Verify LeetCode links
+
+# Weekly: confirm every curated problem still exists on LeetCode, isn't premium-only,
+# and matches its title and difficulty. Network-dependent, so it stays out of CI.
+
+on:
+  schedule:
+    - cron: "30 3 * * 1" # Mondays 03:30 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-links:
+    name: Check problem slugs against LeetCode
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify links
+        run: npm run verify:links

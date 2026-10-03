@@ -128,7 +128,11 @@ Add it to `Settings` and `DEFAULT_SETTINGS` (`lib/progress.ts`) and to `Settings
 
 ## 6. Testing
 
-The repository has **no automated test suite and no CI** (see [`roadmap.md`](roadmap.md)). Current practice:
+**CI (GitHub Actions).**
+- `.github/workflows/ci.yml` runs on every push to `main`, on pull requests, and on demand. It does `npm ci`, then lint, type-check, `check:data` and a production build. It needs no secrets, because the database and password are only read at runtime.
+- `.github/workflows/verify-links.yml` runs `verify:links` every Monday (and on demand). It's kept separate because it depends on LeetCode being reachable.
+
+Beyond CI there are **no browser (e2e) tests in the repo** (see [`roadmap.md`](roadmap.md)). Current practice:
 - `npm run lint`, `npm run check:data` and `npm run build` must pass.
 - Manual checks run against a **throwaway database** (`MONGODB_DB=patternwise_test`), **never your real `patternwise` database**.
 - Areas worth re-checking by hand after a change:
