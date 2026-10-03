@@ -1,0 +1,21 @@
+# Render Blueprint: the AI Coach's open-weight model server (Gemma 4 + EmbeddingGemma via Ollama).
+# The Next.js app itself stays on Vercel; it calls this service with AI_BASE_URL + AI_API_KEY.
+services:
+  - type: web
+    name: patternwise-gemma
+    runtime: docker
+    dockerfilePath: ./deploy/render-ollama/Dockerfile
+    dockerContext: ./deploy/render-ollama
+    region: singapore
+    plan: pro plus
+    healthCheckPath: /healthz
+    autoDeploy: false
+    envVars:
+      - key: COACH_API_KEY
+        generateValue: true
+      - key: PULL_MODELS
+        value: gemma4:e2b-it-qat embeddinggemma
+    disk:
+      name: ollama-models
+      mountPath: /root/.ollama
+      sizeGB: 10
