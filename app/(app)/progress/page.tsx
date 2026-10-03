@@ -1,46 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { BarChart3, Flame, Trophy } from "lucide-react";
 import { ActivityCalendar, DifficultyDonut, InView, PatternHeatmap, SolvedOverTime, TopicBars } from "@/components/charts";
 import { Coverage } from "@/components/coverage";
-import { EmptyState, Meter, PageHeader, Panel, SectionTitle, Shimmer, masteryTone, pct } from "@/components/kit";
+import { EmptyState, Meter, PageHeader, Panel, Ring, SectionTitle, Shimmer, masteryTone, pct } from "@/components/kit";
+import { UrlTabs } from "@/components/url-tabs";
 import { allProblems } from "@/data/curriculum";
 import { useHydrated, useStore } from "@/lib/progress";
-import { activityByDay, difficultySplit, firstSolvesByDay, overview, streaks } from "@/lib/stats";
-import { cn } from "@/lib/utils";
+import { activityByDay, difficultySplit, firstSolvesByDay, overview, phaseProgress, streaks } from "@/lib/stats";
+
+type Tab = "progress" | "analytics" | "coverage";
+const TABS: [Tab, string][] = [
+  ["progress", "Progress"],
+  ["analytics", "Analytics"],
+  ["coverage", "Coverage & gaps"],
+];
 
 export default function ProgressPage() {
+  return (
+    <Suspense>
+      <ProgressInner />
+    </Suspense>
+  );
+}
+
+function ProgressInner() {
   const hydrated = useHydrated();
-  const [tab, setTab] = useState<"analytics" | "coverage">("analytics");
+  const params = useSearchParams();
+  const requested = params.get("tab");
+  // "dsa" was the old name of the analytics tab.
+  const tab: Tab = requested === "analytics" || requested === "dsa" ? "analytics" : requested === "coverage" ? "coverage" : "progress";
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Progress" subtitle="Useful numbers, not vanity metrics: where you're strong, where to push next." />
-
-      <div className="inline-flex rounded-lg border p-0.5" role="tablist" aria-label="Progress views">
-        {(
-          [
-            ["analytics", "Analytics"],
-            ["coverage", "Coverage & gaps"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={cn(
-              "h-7 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-              tab === id ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <PageHeader eyebrow="DSA" title={tab === "analytics" ? "Analytics" : "Progress"} subtitle="Useful numbers, not vanity metrics: where you're strong, where to push next." />
+      <UrlTabs base="/progress" tabs={TABS} active={tab} label="DSA progress views" />
 
       {!hydrated ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-busy="true">
@@ -53,9 +50,105 @@ export default function ProgressPage() {
         </div>
       ) : tab === "coverage" ? (
         <Coverage />
-      ) : (
+      ) : tab === "analytics" ? (
         <Analytics />
+      ) : (
+        <DSAProgress />
       )}
+    </div>
+  );
+}
+
+/** DSA preparation at a glance: five tracks, readiness, study phases and topic mastery. */
+function DSAProgress() {
+  const state = useStore();
+  const o = overview(state);
+  const phases = phaseProgress(state);
+  const parts = [
+    { label: "Interview essentials solved", value: o.readinessParts.essentials, weight: "35%" },
+    { label: "Core pattern mastery", value: o.readinessParts.coreMastery, weight: "35%" },
+    { label: "Essentials revised & not overdue", value: o.readinessParts.revisionHealth, weight: "15%" },
+    { label: "Mock interviews vs target", value: o.readinessParts.mocks, weight: "15%" },
+  ];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Panel className="p-5">
+          <SectionTitle hint="Topics, patterns, problems, revision and mock interviews, weighted equally.">DSA preparation</SectionTitle>
+          <div className="flex items-center gap-5">
+            <Ring value={o.preparation} size={104} label={`DSA preparation ${pct(o.preparation)}`}>
+              <span className="font-mono text-2xl font-semibold">{pct(o.preparation)}</span>
+            </Ring>
+            <ul className="min-w-0 flex-1 space-y-2.5">
+              {o.segments.map((seg) => (
+                <li key={seg.key}>
+                  <div className="mb-0.5 flex justify-between gap-2 text-xs">
+                    <span className="font-medium">{seg.label}</span>
+                    <span className="truncate font-mono text-muted-foreground">{seg.detail}</span>
+                  </div>
+                  <Meter value={seg.value} label={seg.label} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+        <Panel className="p-5">
+          <SectionTitle hint="A weighted score from your own DSA data.">Interview readiness</SectionTitle>
+          <div className="flex items-center gap-5">
+            <Ring value={o.readiness} size={104} tone="success" label={`Interview readiness ${pct(o.readiness)}`}>
+              <span className="font-mono text-2xl font-semibold">{pct(o.readiness)}</span>
+            </Ring>
+            <ul className="min-w-0 flex-1 space-y-2.5">
+              {parts.map((p) => (
+                <li key={p.label}>
+                  <div className="mb-0.5 flex justify-between gap-2 text-xs">
+                    <span className="truncate text-muted-foreground">{p.label}</span>
+                    <span className="font-mono">{p.weight}</span>
+                  </div>
+                  <Meter value={p.value} tone="success" label={p.label} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+      </div>
+
+      <Panel className="p-5">
+        <SectionTitle hint="Share of each phase's problems solved." action={<Link href="/study-plan" className="text-xs text-muted-foreground hover:text-foreground">Study plan →</Link>}>
+          Study phases
+        </SectionTitle>
+        <ol className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+          {phases.map(({ phase, value }, i) => (
+            <li key={phase.id} className="rounded-lg border bg-surface p-3">
+              <p className="font-mono text-[10px] text-muted-foreground">PHASE {i + 1}</p>
+              <p className="mt-0.5 truncate text-sm font-medium" title={phase.name}>
+                {phase.name}
+              </p>
+              <Meter value={value} tone={value >= 0.8 ? "success" : "primary"} className="mt-2" label={`${phase.name} progress`} />
+              <p className="mt-1 font-mono text-[11px] text-muted-foreground">{pct(value)}</p>
+            </li>
+          ))}
+        </ol>
+      </Panel>
+
+      <Panel className="p-5">
+        <SectionTitle hint="Mastery per topic, in study order.">Topic mastery</SectionTitle>
+        <ul className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+          {o.topicStats.map(({ topic, stat }) => (
+            <li key={topic.id}>
+              <Link href={`/topics/${topic.id}`} className="block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+                  <span className="truncate">{topic.name}</span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {stat.solved}/{stat.total} · {pct(stat.mastery)}
+                  </span>
+                </div>
+                <Meter value={stat.mastery} tone={masteryTone(stat.mastery)} label={`${topic.name} mastery`} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
     </div>
   );
 }

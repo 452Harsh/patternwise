@@ -10,7 +10,7 @@ const strip = <T extends Document>({ _id, ...rest }: T) => ({ ...rest, __id: _id
 /** Read every collection and assemble the client-side State shape. */
 export async function loadState() {
   const d = await db();
-  const [progress, patterns, custom, companies, mocks, events, meta] = await Promise.all([
+  const [progress, patterns, custom, companies, mocks, events, meta, sd, diagrams, sdCustom, sdSessions] = await Promise.all([
     d.collection<WithId>(COLLECTIONS.progress).find().toArray(),
     d.collection<WithId>(COLLECTIONS.patterns).find().toArray(),
     d.collection<WithId>(COLLECTIONS.custom).find().sort({ createdAt: 1 }).toArray(),
@@ -18,6 +18,10 @@ export async function loadState() {
     d.collection<WithId>(COLLECTIONS.mocks).find().sort({ date: -1 }).toArray(),
     d.collection<WithId>(COLLECTIONS.events).find().sort({ at: -1 }).limit(300).toArray(),
     d.collection<WithId>(COLLECTIONS.meta).findOne({ _id: "meta" }),
+    d.collection<WithId>(COLLECTIONS.sd).find().toArray(),
+    d.collection<WithId>(COLLECTIONS.diagrams).find().toArray(),
+    d.collection<WithId>(COLLECTIONS.sdCustom).find().sort({ createdAt: 1 }).toArray(),
+    d.collection<WithId>(COLLECTIONS.sdSessions).find().sort({ startedAt: -1 }).toArray(),
   ]);
 
   const byId = (docs: WithId[]) =>
@@ -31,7 +35,8 @@ export async function loadState() {
       return { [key]: __id, ...rest };
     });
 
-  const empty = !progress.length && !patterns.length && !custom.length && !companies.length && !mocks.length && !meta;
+  const empty =
+    !progress.length && !patterns.length && !custom.length && !companies.length && !mocks.length && !meta && !sd.length && !diagrams.length;
 
   return {
     empty,
@@ -46,6 +51,15 @@ export async function loadState() {
       plans: meta?.plans ?? {},
       checklist: meta?.checklist ?? {},
       ...(meta?.settings ? { settings: meta.settings } : {}),
+      sd: byId(sd),
+      diagrams: Object.fromEntries(
+        diagrams.map((doc) => {
+          const { __id, ...rest } = strip(doc);
+          return [__id, { id: __id, ...rest }];
+        }),
+      ),
+      sdCustom: list(sdCustom, "id"),
+      sdSessions: list(sdSessions, "id"),
     },
   };
 }
@@ -83,6 +97,23 @@ export async function applyPatch(patch: Patch) {
   if (patch.patterns && Object.keys(patch.patterns).length) {
     jobs.push(d.collection<WithId>(COLLECTIONS.patterns).bulkWrite(upsertMap(patch.patterns), { ordered: false }));
   }
+  if (patch.sd && Object.keys(patch.sd).length) {
+    jobs.push(d.collection<WithId>(COLLECTIONS.sd).bulkWrite(upsertMap(patch.sd), { ordered: false }));
+  }
+  if (patch.diagrams && Object.keys(patch.diagrams).length) {
+    // Diagram documents carry their own id; store it as _id only.
+    const ops = Object.fromEntries(
+      Object.entries(patch.diagrams).map(([id, dgm]) => {
+        if (!dgm) return [id, null];
+        const { id: _drop, ...rest } = dgm;
+        void _drop;
+        return [id, rest];
+      }),
+    );
+    jobs.push(d.collection<WithId>(COLLECTIONS.diagrams).bulkWrite(upsertMap(ops), { ordered: false }));
+  }
+  if (patch.sdCustom) jobs.push(replaceAll(COLLECTIONS.sdCustom, patch.sdCustom, "id"));
+  if (patch.sdSessions) jobs.push(replaceAll(COLLECTIONS.sdSessions, patch.sdSessions, "id"));
   if (patch.custom) jobs.push(replaceAll(COLLECTIONS.custom, patch.custom, "slug"));
   if (patch.companies) jobs.push(replaceAll(COLLECTIONS.companies, patch.companies, "id"));
   if (patch.mocks) jobs.push(replaceAll(COLLECTIONS.mocks, patch.mocks, "id"));

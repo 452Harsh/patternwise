@@ -55,7 +55,7 @@ export default function StudyPlanPage() {
         >
           Today
         </SectionTitle>
-        <DailyPlan />
+        <DailyPlan tracks={["dsa"]} />
         {hydrated && (
           <button
             type="button"

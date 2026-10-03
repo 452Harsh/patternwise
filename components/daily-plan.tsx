@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { BookOpenText, Check, Library, RotateCcw, Sparkles, type LucideIcon } from "lucide-react";
+import { BookOpenText, Check, Component, Library, Network, RotateCcw, Sparkles, type LucideIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { DifficultyBadge, EmptyState, Panel, Shimmer } from "@/components/kit";
 import { patternIndex } from "@/data/curriculum";
 import { useCatalog } from "@/lib/catalog";
+import { useSDItems } from "@/lib/sd";
+import { TrackTag } from "@/components/sd/sd-kit";
 import { buildDailyPlan } from "@/lib/plan";
-import { isSolved, savePlan, toggleDaily, today, useHydrated, useStore, type PlanTask, type State } from "@/lib/progress";
+import { isSolved, replacePlan, savePlan, toggleDaily, today, useHydrated, useStore, type PlanTask, type State } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<PlanTask["kind"], LucideIcon> = {
@@ -16,10 +19,13 @@ const KIND_ICON: Record<PlanTask["kind"], LucideIcon> = {
   pattern: Library,
   failed: RotateCcw,
   theory: BookOpenText,
+  hld: Network,
+  lld: Component,
 };
 
 /** A task counts as done when ticked, or automatically when its work shows up in today's history. */
 function autoDone(task: PlanTask, state: State, date: string): boolean {
+  if (task.sdKey) return !!state.sd[task.sdKey]?.history.some((h) => h.date === date);
   if (!task.slug) return false;
   const e = state.problems[task.slug];
   if (!e) return false;
@@ -47,9 +53,18 @@ export function useDailyPlan() {
   return { ready: hydrated && !!tasks, date, items: list, done: list.filter((x) => x.done).length };
 }
 
-export function DailyPlan({ compact }: { compact?: boolean }) {
-  const { ready, date, items, done } = useDailyPlan();
+export const taskTrack = (t: PlanTask) => (t.kind === "hld" || t.kind === "lld" ? t.kind : "dsa");
+
+export function DailyPlan({ compact, tracks }: { compact?: boolean; tracks?: ("dsa" | "hld" | "lld")[] }) {
+  const plan = useDailyPlan();
+  const state = useStore();
+  const { ready, date } = plan;
+  const items = tracks ? plan.items.filter((x) => tracks.includes(taskTrack(x.task))) : plan.items;
+  const done = items.filter((x) => x.done).length;
+  // Only label tracks when more than one is shown (e.g. HLD vs LLD in the System Design plan).
+  const showTrack = !tracks || tracks.length > 1;
   const catalog = useCatalog();
+  const sdItems = useSDItems();
 
   if (!ready) {
     return (
@@ -65,6 +80,21 @@ export function DailyPlan({ compact }: { compact?: boolean }) {
   }
 
   if (!items.length) {
+    if (tracks && plan.items.length) {
+      // Today's plan was generated without these tracks (e.g. before System Design was enabled).
+      return (
+        <EmptyState
+          icon={Sparkles}
+          title="No tasks for this track today"
+          description="Today's plan was created earlier. Regenerate it to include System Design tasks."
+          action={
+            <Button size="sm" variant="outline" onClick={() => replacePlan(date, buildDailyPlan(state))}>
+              Regenerate today&apos;s plan
+            </Button>
+          }
+        />
+      );
+    }
     return (
       <EmptyState
         icon={Sparkles}
@@ -94,8 +124,11 @@ export function DailyPlan({ compact }: { compact?: boolean }) {
           const Icon = KIND_ICON[task.kind];
           const item = task.slug ? catalog.find((c) => c.problem.slug === task.slug) : undefined;
           const pattern = task.patternId ? patternIndex.get(task.patternId)?.pattern : undefined;
-          const href = item ? `/problems/${item.problem.slug}` : pattern ? `/patterns/${pattern.id}` : "#";
-          const title = item?.problem.title ?? pattern?.name ?? "—";
+          const sdItem = task.sdKey ? sdItems.find((x) => x.key === task.sdKey) : undefined;
+          const href = sdItem ? sdItem.href : item ? `/problems/${item.problem.slug}` : pattern ? `/patterns/${pattern.id}` : "#";
+          const title = sdItem?.title ?? item?.problem.title ?? pattern?.name ?? "—";
+          const track = taskTrack(task);
+          const difficulty = item?.problem.difficulty ?? sdItem?.difficulty;
           const id = `task-${task.id}`;
           return (
             <li key={task.id} className={cn("flex items-center gap-3 px-4", compact ? "py-2.5" : "py-3")}>
@@ -115,7 +148,10 @@ export function DailyPlan({ compact }: { compact?: boolean }) {
                 <Icon className="size-3.5" aria-hidden />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{task.label}</span>
+                <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {task.label}
+                  {showTrack && <TrackTag track={track} />}
+                </span>
                 <Link
                   href={href}
                   className={cn(
@@ -126,7 +162,7 @@ export function DailyPlan({ compact }: { compact?: boolean }) {
                   {task.kind === "theory" ? `Read & re-derive: ${title}` : title}
                 </Link>
               </span>
-              {item && <DifficultyBadge difficulty={item.problem.difficulty} className="hidden sm:inline-flex" />}
+              {difficulty && <DifficultyBadge difficulty={difficulty} className="hidden sm:inline-flex" />}
               <span
                 className={cn(
                   "hidden w-16 items-center justify-end gap-1 text-xs sm:flex",

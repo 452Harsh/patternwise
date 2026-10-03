@@ -21,6 +21,10 @@ export const COLLECTIONS = {
   mocks: "mock_interviews",
   events: "activity",
   meta: "meta",
+  sd: "sd_progress",
+  diagrams: "sd_diagrams",
+  sdCustom: "sd_custom_problems",
+  sdSessions: "sd_sessions",
 } as const;
 
 export async function db(): Promise<Db> {
@@ -35,5 +39,7 @@ async function ensureIndexes(d: Db) {
     d.collection(COLLECTIONS.events).createIndex({ at: -1 }),
     d.collection(COLLECTIONS.progress).createIndex({ nextReview: 1 }),
     d.collection(COLLECTIONS.progress).createIndex({ status: 1 }),
+    d.collection(COLLECTIONS.sd).createIndex({ nextReview: 1 }),
+    d.collection(COLLECTIONS.diagrams).createIndex({ problemKey: 1 }),
   ]);
 }

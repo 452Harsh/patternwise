@@ -1,7 +1,8 @@
 import { allPatterns, getTopic, patternIndex } from "@/data/curriculum";
+import { SD_ITEMS, type SDItem } from "@/data/sd";
 import { IMPORTANT } from "@/data/important";
 import { PHASES } from "@/data/study-plan";
-import { isDue, isSolved, needsRevisit, type PlanTask, type State } from "./progress";
+import { isDue, isSolved, needsRevisit, today, type PlanTask, type State } from "./progress";
 import { currentPhaseIndex, patternStat } from "./stats";
 
 /**
@@ -51,5 +52,40 @@ export function buildDailyPlan(state: State): PlanTask[] {
   if (theoryPattern && patternIndex.has(theoryPattern)) {
     tasks.push({ id: `theory-${theoryPattern}`, kind: "theory", label: "20 min theory", patternId: theoryPattern });
   }
+
+  // Both modules share one daily plan document; each module's page shows only its own tasks.
+  tasks.push(...systemDesignTasks(state));
   return tasks;
+}
+
+/**
+ * System Design part of the plan: one HLD concept (or an overdue HLD review), one LLD pattern/concept,
+ * and one design problem, alternating HLD and LLD by day.
+ */
+function systemDesignTasks(state: State): PlanTask[] {
+  const out: PlanTask[] = [];
+  const t = today();
+  const e = (x: SDItem) => state.sd[x.key];
+  const untouched = (x: SDItem) => !e(x)?.history.length;
+  const due = (x: SDItem) => !!e(x)?.nextReview && e(x)!.history.length > 0 && e(x)!.nextReview! <= t;
+  const oldestDue = (xs: SDItem[]) => xs.filter(due).sort((a, b) => e(a)!.nextReview!.localeCompare(e(b)!.nextReview!))[0];
+  const task = (x: SDItem, label: string): PlanTask => ({ id: `sd-${x.key}`, kind: x.track, label, sdKey: x.key });
+
+  const hldConcepts = SD_ITEMS.filter((x) => x.track === "hld" && x.kind === "concept");
+  const hldDue = oldestDue(SD_ITEMS.filter((x) => x.track === "hld" && x.kind !== "problem"));
+  const hldNext = hldConcepts.find(untouched);
+  if (hldDue) out.push(task(hldDue, "Revise"));
+  else if (hldNext) out.push(task(hldNext, "Learn"));
+
+  const lldItems = SD_ITEMS.filter((x) => x.track === "lld" && (x.kind === "pattern" || x.kind === "concept"));
+  const lldDue = oldestDue(lldItems);
+  const lldNext = lldItems.find((x) => x.kind === "pattern" && untouched(x)) ?? lldItems.find(untouched);
+  if (lldDue) out.push(task(lldDue, "Review"));
+  else if (lldNext) out.push(task(lldNext, "Learn"));
+
+  const track = new Date(`${t}T12:00:00`).getDate() % 2 === 0 ? "hld" : "lld";
+  const problems = SD_ITEMS.filter((x) => x.kind === "problem" && x.track === track);
+  const problem = oldestDue(problems) ?? problems.find(untouched);
+  if (problem) out.push(task(problem, "Practice"));
+  return out;
 }

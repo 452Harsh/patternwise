@@ -1,8 +1,22 @@
 "use client";
 
-import { Highlight, themes } from "prism-react-renderer";
+import { Highlight, Prism, themes } from "prism-react-renderer";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+
+// prism-react-renderer ships without Java; register a compact grammar on top of the C-like base.
+if (!Prism.languages.java) {
+  Prism.languages.java = Prism.languages.extend("clike", {
+    "class-name": /\b[A-Z][A-Za-z0-9_]*\b/,
+    keyword:
+      /\b(?:abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|final|finally|float|for|if|implements|import|instanceof|int|interface|long|native|new|null|package|permits|private|protected|public|record|return|sealed|short|static|super|switch|synchronized|this|throw|throws|transient|try|var|void|volatile|while|yield|true|false)\b/,
+    number: /\b0x[\da-f_]+L?\b|(?:\b\d[\d_]*(?:\.[\d_]*)?|\B\.\d[\d_]*)(?:e[+-]?\d[\d_]*)?[dfl]?/i,
+    operator: /->|::|\+\+|--|&&|\|\||[?:~]|[-+*/%&|^!=<>]=?/,
+  });
+  Prism.languages.insertBefore("java", "class-name", {
+    annotation: { pattern: /@\w+/, alias: "punctuation" },
+  });
+}
 
 const PRISM_LANG: Record<string, string> = {
   python: "python",
@@ -12,6 +26,7 @@ const PRISM_LANG: Record<string, string> = {
   cpp: "cpp",
   go: "go",
   pseudocode: "python",
+  "c++": "cpp",
 };
 
 export const LANGUAGES = [

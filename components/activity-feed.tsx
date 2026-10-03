@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { CircleCheck, Crown, History, Library, NotebookPen, Presentation, RotateCcw, Flag, CircleX, type LucideIcon } from "lucide-react";
+import { BookOpen, CircleCheck, Crown, History, Library, Network, NotebookPen, Presentation, RotateCcw, Flag, CircleX, Timer, type LucideIcon } from "lucide-react";
 import { EmptyState, Panel } from "@/components/kit";
 import { timeAgo } from "@/lib/format";
+import { sdHref } from "@/data/sd";
 import { useStore, type EventType } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
@@ -16,10 +17,21 @@ const META: Record<EventType, { icon: LucideIcon; tone: string }> = {
   pattern: { icon: Library, tone: "text-primary bg-primary/10" },
   flagged: { icon: Flag, tone: "text-warning bg-warning/10" },
   mock: { icon: Presentation, tone: "text-info bg-info/10" },
+  "sd-studied": { icon: BookOpen, tone: "text-info bg-info/10" },
+  "sd-reviewed": { icon: RotateCcw, tone: "text-info bg-info/10" },
+  "sd-practiced": { icon: Network, tone: "text-success bg-success/10" },
+  "sd-mastered": { icon: Crown, tone: "text-primary bg-primary/10" },
+  "sd-note": { icon: NotebookPen, tone: "text-muted-foreground bg-muted" },
+  "sd-session": { icon: Timer, tone: "text-warning bg-warning/10" },
 };
 
-export function ActivityFeed({ limit = 8 }: { limit?: number }) {
-  const events = useStore().events.slice(0, limit);
+/** Which part of the app an event belongs to. */
+export const eventScope = (type: EventType) => (type.startsWith("sd-") ? "sd" : "dsa");
+
+export function ActivityFeed({ limit = 8, scope }: { limit?: number; scope?: "dsa" | "sd" }) {
+  const events = useStore()
+    .events.filter((e) => !scope || eventScope(e.type) === scope)
+    .slice(0, limit);
 
   if (!events.length) {
     return (
@@ -37,7 +49,7 @@ export function ActivityFeed({ limit = 8 }: { limit?: number }) {
         {events.map((ev) => {
           const m = META[ev.type];
           const Icon = m.icon;
-          const href = ev.slug ? `/problems/${ev.slug}` : ev.patternId ? `/patterns/${ev.patternId}` : undefined;
+          const href = ev.sdKey ? sdHref(ev.sdKey) : ev.slug ? `/problems/${ev.slug}` : ev.patternId ? `/patterns/${ev.patternId}` : undefined;
           return (
             <li key={ev.id} className="relative flex items-start gap-3">
               <span className={cn("relative z-10 grid size-7 shrink-0 place-items-center rounded-full ring-4 ring-card", m.tone)}>

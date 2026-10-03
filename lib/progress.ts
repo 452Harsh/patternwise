@@ -84,7 +84,22 @@ export interface Mock {
   notes: string;
 }
 
-export type EventType = "solved" | "reviewed" | "failed" | "mastered" | "note" | "pattern" | "flagged" | "mock";
+export type EventType =
+  | "solved"
+  | "reviewed"
+  | "failed"
+  | "mastered"
+  | "note"
+  | "pattern"
+  | "flagged"
+  | "mock"
+  // System Design
+  | "sd-studied"
+  | "sd-reviewed"
+  | "sd-practiced"
+  | "sd-mastered"
+  | "sd-note"
+  | "sd-session";
 
 export interface ActivityEvent {
   id: string;
@@ -92,7 +107,96 @@ export interface ActivityEvent {
   type: EventType;
   slug?: string;
   patternId?: string;
+  /** System Design catalog key, e.g. "concept:cap-theorem" or "diagram:abc". */
+  sdKey?: string;
   text: string;
+}
+
+/* ---------- System Design ---------- */
+
+export type SDStatus = "todo" | "learning" | "done" | "mastered";
+export type SDHistoryKind = "study" | "review" | "practice" | "session";
+
+export interface SDHistoryItem {
+  date: string;
+  at: string;
+  kind: SDHistoryKind;
+  /** 1–5 */
+  rating: number;
+  durationSec?: number;
+  note?: string;
+}
+
+/** Progress for any System Design item (concept, pattern, problem, diagram), keyed by catalog key. */
+export interface SDEntry {
+  status: SDStatus;
+  /** 0 = unrated, 1–5 */
+  confidence: number;
+  starred: boolean;
+  notes: string;
+  reviewCount: number;
+  lastReviewed?: string;
+  nextReview?: string;
+  history: SDHistoryItem[];
+  /** Problem workspaces (requirements, capacity, APIs, classes…). Shape depends on the problem track. */
+  workspace?: Record<string, unknown>;
+  /** Reviews switched off: never scheduled or due, even when rated again. */
+  reviewOff?: boolean;
+  updatedAt: string;
+}
+
+export interface SDCustomProblem {
+  id: string;
+  track: "hld" | "lld";
+  title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  statement: string;
+  createdAt: string;
+}
+
+export interface DiagramNode {
+  id: string;
+  type: string;
+  label: string;
+  x: number;
+  y: number;
+  note?: string;
+}
+
+export interface DiagramEdge {
+  id: string;
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface Diagram {
+  id: string;
+  title: string;
+  /** Catalog key of the problem it belongs to, if any. */
+  problemKey?: string;
+  notes: string;
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SDSession {
+  id: string;
+  mode: "hld" | "lld" | "mixed";
+  itemKey: string;
+  title: string;
+  startedAt: string;
+  plannedMin: number;
+  durationSec: number;
+  /** Phase id → covered */
+  phases: Record<string, boolean>;
+  wentWell: string;
+  difficult: string;
+  missing: string;
+  toRevise: string;
+  confidence: number;
 }
 
 export interface Settings {
@@ -100,6 +204,12 @@ export interface Settings {
   dailyNew: number;
   mockTarget: number;
   sidebarCollapsed: boolean;
+  /** Sidebar group id → collapsed */
+  navCollapsed: Record<string, boolean>;
+  /** Add System Design tasks to the daily plan. */
+  includeSD: boolean;
+  /** "Mark as complete" on System Design items schedules spaced-repetition reviews. */
+  sdAutoReview: boolean;
 }
 
 export interface State {
@@ -116,14 +226,21 @@ export interface State {
   /** Interview revision checklist: item id → done */
   checklist: Record<string, boolean>;
   settings: Settings;
+  /** System Design progress, keyed by catalog key ("concept:cap-theorem", "problem:parking-lot", "diagram:…"). */
+  sd: Record<string, SDEntry>;
+  sdCustom: SDCustomProblem[];
+  diagrams: Record<string, Diagram>;
+  sdSessions: SDSession[];
 }
 
 export interface PlanTask {
   id: string;
-  kind: "new" | "pattern" | "failed" | "theory";
+  kind: "new" | "pattern" | "failed" | "theory" | "hld" | "lld";
   label: string;
   slug?: string;
   patternId?: string;
+  /** System Design tasks: catalog key */
+  sdKey?: string;
 }
 
 export type ProgressMap = State["problems"];
@@ -136,7 +253,7 @@ const DIRTY_KEY = "dsa-tracker:dirty";
 const LEGACY_KEY = "dsa-tracker:v1";
 const MAX_EVENTS = 300;
 
-export const DEFAULT_SETTINGS: Settings = { name: "", dailyNew: 2, mockTarget: 10, sidebarCollapsed: false };
+export const DEFAULT_SETTINGS: Settings = { name: "", dailyNew: 2, mockTarget: 10, sidebarCollapsed: false, navCollapsed: {}, includeSD: true, sdAutoReview: true };
 
 const EMPTY: State = {
   problems: {},
@@ -149,7 +266,21 @@ const EMPTY: State = {
   plans: {},
   checklist: {},
   settings: DEFAULT_SETTINGS,
+  sd: {},
+  sdCustom: [],
+  diagrams: {},
+  sdSessions: [],
 };
+
+export const blankSD = (): SDEntry => ({
+  status: "todo",
+  confidence: 0,
+  starred: false,
+  notes: "",
+  reviewCount: 0,
+  history: [],
+  updatedAt: new Date(0).toISOString(),
+});
 
 export const blankEntry = (): Entry => ({
   status: "todo",
@@ -219,6 +350,10 @@ function normalize(src: Partial<State>): State {
     plans: src.plans ?? {},
     checklist: src.checklist ?? {},
     settings: { ...DEFAULT_SETTINGS, ...src.settings },
+    sd: Object.fromEntries(Object.entries(src.sd ?? {}).map(([k, e]) => [k, { ...blankSD(), ...e }])),
+    sdCustom: src.sdCustom ?? [],
+    diagrams: src.diagrams ?? {},
+    sdSessions: src.sdSessions ?? [],
   };
 }
 
@@ -293,10 +428,10 @@ function persistLocal(state: State) {
 
 function write(state: State) {
   persistLocal(state);
-  if (lastSynced && !signingOut) {
-    markDirty(true);
-    scheduleSync(SAVE_DEBOUNCE_MS);
-  }
+  if (signingOut) return;
+  // Unsaved until the server confirms it — also for edits made while loading or offline.
+  markDirty(true);
+  if (lastSynced) scheduleSync(SAVE_DEBOUNCE_MS);
 }
 
 function markDirty(dirty: boolean) {
@@ -340,7 +475,13 @@ const subscribeStatus = (cb: () => void) => {
 export const useSyncStatus = () => useSyncExternalStore(subscribeStatus, () => status, () => "idle" as SyncStatus);
 
 const hasData = (s: State) =>
-  Object.keys(s.problems).length > 0 || Object.keys(s.patterns).length > 0 || s.custom.length > 0 || s.companies.length > 0 || s.mocks.length > 0;
+  Object.keys(s.problems).length > 0 ||
+  Object.keys(s.patterns).length > 0 ||
+  s.custom.length > 0 ||
+  s.companies.length > 0 ||
+  s.mocks.length > 0 ||
+  Object.keys(s.sd).length > 0 ||
+  Object.keys(s.diagrams).length > 0;
 
 function mapDiff<T>(prev: Record<string, T>, next: Record<string, T>): Record<string, T | null> | undefined {
   const out: Record<string, T | null> = {};
@@ -354,9 +495,13 @@ function diff(prev: State, next: State) {
   const patch: Record<string, unknown> = {};
   const problems = mapDiff(prev.problems, next.problems);
   const patterns = mapDiff(prev.patterns, next.patterns);
+  const sd = mapDiff(prev.sd, next.sd);
+  const diagrams = mapDiff(prev.diagrams, next.diagrams);
   if (problems) patch.problems = problems;
   if (patterns) patch.patterns = patterns;
-  for (const k of ["custom", "companies", "mocks", "events"] as const) if (prev[k] !== next[k]) patch[k] = next[k];
+  if (sd) patch.sd = sd;
+  if (diagrams) patch.diagrams = diagrams;
+  for (const k of ["custom", "companies", "mocks", "events", "sdCustom", "sdSessions"] as const) if (prev[k] !== next[k]) patch[k] = next[k];
   const meta: Record<string, unknown> = {};
   for (const k of ["daily", "plans", "checklist", "settings"] as const) if (prev[k] !== next[k]) meta[k] = next[k];
   if (Object.keys(meta).length) patch.meta = meta;
@@ -403,9 +548,77 @@ async function flush() {
 }
 
 /** Load from the server once per page load. Called by <SyncBoot/>. */
+const newer = <T extends { updatedAt?: string }>(a: T | undefined, b: T | undefined): T | undefined =>
+  !a ? b : !b ? a : (b.updatedAt ?? "") > (a.updatedAt ?? "") ? b : a;
+
+function unionById<T>(remote: T[], local: T[], id: (x: T) => string): T[] {
+  const out = new Map(remote.map((x) => [id(x), x]));
+  for (const x of local) out.set(id(x), x);
+  return [...out.values()];
+}
+
+/**
+ * Merge a local copy that has unsaved edits into the server copy without losing either side:
+ * per-item newest-wins for progress maps, unions for lists, and nothing that exists only on the
+ * server is dropped (so another device's changes survive).
+ */
+function mergeStates(remote: State, local: State): State {
+  const mergeMap = <T extends { updatedAt?: string }>(r: Record<string, T>, l: Record<string, T>) => {
+    const out: Record<string, T> = { ...r };
+    for (const [k, v] of Object.entries(l)) out[k] = newer(r[k], v)!;
+    return out;
+  };
+  const changedSettings = Object.fromEntries(
+    Object.entries(local.settings).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(DEFAULT_SETTINGS[k as keyof Settings])),
+  );
+  const daily: State["daily"] = { ...remote.daily };
+  for (const [d, tasks] of Object.entries(local.daily)) daily[d] = { ...remote.daily[d], ...tasks };
+  return {
+    problems: mergeMap(remote.problems, local.problems),
+    sd: mergeMap(remote.sd, local.sd),
+    diagrams: mergeMap(remote.diagrams, local.diagrams),
+    patterns: { ...remote.patterns, ...local.patterns },
+    custom: unionById(remote.custom, local.custom, (x) => x.slug),
+    companies: unionById(remote.companies, local.companies, (x) => x.id),
+    mocks: unionById(remote.mocks, local.mocks, (x) => x.id),
+    sdCustom: unionById(remote.sdCustom, local.sdCustom, (x) => x.id),
+    sdSessions: unionById(remote.sdSessions, local.sdSessions, (x) => x.id),
+    events: unionById(remote.events, local.events, (x) => x.id)
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, MAX_EVENTS),
+    daily,
+    plans: { ...remote.plans, ...local.plans },
+    checklist: { ...remote.checklist, ...local.checklist },
+    settings: { ...remote.settings, ...changedSettings },
+  };
+}
+
+/**
+ * Re-apply edits made between `before` and `current` (e.g. while the initial load was in flight)
+ * on top of `base`, so they aren't lost when server data arrives.
+ */
+function replayLocalEdits(base: State, before: State, current: State): State {
+  const out: State = { ...base };
+  for (const k of ["problems", "patterns", "sd", "diagrams"] as const) {
+    const changed = mapDiff(before[k] as Record<string, unknown>, current[k] as Record<string, unknown>);
+    if (!changed) continue;
+    const merged: Record<string, unknown> = { ...(base[k] as Record<string, unknown>) };
+    for (const [key, value] of Object.entries(changed)) {
+      if (value === null) delete merged[key];
+      else merged[key] = value;
+    }
+    (out as unknown as Record<string, unknown>)[k] = merged;
+  }
+  for (const k of ["custom", "companies", "mocks", "events", "sdCustom", "sdSessions", "daily", "plans", "checklist", "settings"] as const) {
+    if (before[k] !== current[k]) (out as unknown as Record<string, unknown>)[k] = current[k];
+  }
+  return out;
+}
+
 export async function initRemote() {
   if (status !== "idle" || signingOut) return;
   setStatus("loading");
+  const beforeLoad = read();
   try {
     const res = await fetch("/api/state", { cache: "no-store" });
     if (res.status === 401) return toLogin();
@@ -422,15 +635,18 @@ export async function initRemote() {
     if (signingOut) return;
     const remote = normalize(state);
     lastSynced = remote;
+    const current = read();
+    if (current !== beforeLoad && !(isDirty() && hasData(local))) {
+      // Edits happened while loading: keep them on top of the server copy and save them.
+      persistLocal(replayLocalEdits(remote, beforeLoad, current));
+      markDirty(true);
+      setStatus("ready");
+      scheduleSync(0);
+      return;
+    }
     if (isDirty() && hasData(local)) {
-      // The last session closed before its changes were confirmed: keep them and re-send.
-      // Per-problem entries merge by updatedAt so newer edits from another device survive.
-      const problems = { ...remote.problems };
-      for (const [slug, e] of Object.entries(local.problems)) {
-        const r = remote.problems[slug];
-        if (!r || e.updatedAt > r.updatedAt) problems[slug] = e;
-      }
-      persistLocal({ ...local, problems });
+      // Unsaved local edits (closed tab, offline, or edited while loading): merge, keep both sides, re-send.
+      persistLocal(mergeStates(remote, read()));
       setStatus("ready");
       scheduleSync(0);
       return;
@@ -694,6 +910,189 @@ export function updateSettings(patch: Partial<Settings>) {
   const state = read();
   write({ ...state, settings: { ...state.settings, ...patch } });
 }
+
+/* ---------- System Design mutations ---------- */
+
+/** Confidence scale for concepts (index = value). */
+export const SD_CONFIDENCE = ["Not rated", "Don't know", "Familiar", "Understand", "Can explain", "Can apply"] as const;
+
+/** Revision marks (value = rating 1–5). */
+export const SD_REVIEW_MARKS = [
+  { rating: 1, label: "Forgot" },
+  { rating: 2, label: "Need practice" },
+  { rating: 3, label: "Understand" },
+  { rating: 4, label: "Strong" },
+  { rating: 5, label: "Mastered" },
+] as const;
+
+export function updateSD(key: string, patch: Partial<SDEntry>, title?: string) {
+  let state = read();
+  const prev = state.sd[key] ?? blankSD();
+  const next: SDEntry = { ...prev, ...patch, updatedAt: new Date().toISOString() };
+  if (next.status === "todo" && (patch.notes || patch.workspace)) next.status = "learning";
+  state = { ...state, sd: { ...state.sd, [key]: next } };
+  if ("notes" in patch || "workspace" in patch) {
+    const last = state.events.find((e) => e.sdKey === key && e.type === "sd-note");
+    if (!last || Date.now() - new Date(last.at).getTime() > NOTE_EVENT_GAP_MS) {
+      state = withEvent(state, { type: "sd-note", sdKey: key, text: `Added notes to ${title ?? key}` });
+    }
+  }
+  write(state);
+}
+
+/**
+ * Record how well you know an item (1–5) and schedule its next review.
+ * The first rating counts as studying; later ones count as reviews.
+ */
+export function rateSD(
+  key: string,
+  rating: number,
+  opts: { kind?: SDHistoryKind; title?: string; durationSec?: number; note?: string } = {},
+) {
+  let state = read();
+  const current = state.sd[key] ?? blankSD();
+  const date = today();
+  // Re-rating on the same day corrects today's rating instead of counting as another review.
+  const last = current.history.at(-1);
+  const correcting = !!last && last.date === date && (last.kind === "study" || last.kind === "review") && (!opts.kind || opts.kind === "study" || opts.kind === "review");
+  const prev: SDEntry = correcting
+    ? { ...current, history: current.history.slice(0, -1), reviewCount: current.reviewCount - (last.kind === "review" ? 1 : 0) }
+    : current;
+  const kind = opts.kind ?? (prev.history.length ? "review" : "study");
+  const isReview = prev.history.length > 0;
+  const reviewCount = prev.reviewCount + (isReview ? 1 : 0);
+  const now = new Date().toISOString();
+
+  let status: SDStatus = rating >= 3 ? "done" : "learning";
+  if (rating >= 5 && reviewCount >= 2) status = "mastered";
+  else if (prev.status === "mastered" && rating >= 4) status = "mastered";
+
+  const next: SDEntry = {
+    ...prev,
+    status,
+    confidence: rating,
+    reviewCount,
+    lastReviewed: now,
+    nextReview: prev.reviewOff ? undefined : addDays(date, rating <= 1 ? 1 : reviewInterval(rating, reviewCount)),
+    history: [...prev.history, { date, at: now, kind, rating, durationSec: opts.durationSec, note: opts.note?.trim() || undefined }].slice(-200),
+    updatedAt: now,
+  };
+  state = { ...state, sd: { ...state.sd, [key]: next } };
+
+  const name = opts.title ?? key;
+  if (correcting && status !== "mastered") {
+    write(state); // no duplicate activity entry for a same-day correction
+    return;
+  }
+  if (status === "mastered" && prev.status !== "mastered") state = withEvent(state, { type: "sd-mastered", sdKey: key, text: `Mastered ${name}` });
+  else if (kind === "practice") state = withEvent(state, { type: "sd-practiced", sdKey: key, text: `Practiced ${name}` });
+  else if (kind === "session") state = withEvent(state, { type: "sd-session", sdKey: key, text: `Mock session: ${name}` });
+  else if (isReview) state = withEvent(state, { type: "sd-reviewed", sdKey: key, text: `Reviewed ${name}` });
+  else state = withEvent(state, { type: "sd-studied", sdKey: key, text: `Learned ${name}` });
+  write(state);
+}
+
+/**
+ * One-click "Mark as complete": records you studied it at least at "Understand" (3) level,
+ * keeping a higher confidence if you already gave one, and schedules the first review.
+ */
+export function markSDComplete(key: string, title?: string) {
+  const state = read();
+  const prev = state.sd[key] ?? blankSD();
+  if (prev.status === "done" || prev.status === "mastered") return;
+  // With auto-review off in Settings, completing never schedules reviews.
+  if (!state.settings.sdAutoReview && !prev.reviewOff) {
+    write({ ...state, sd: { ...state.sd, [key]: { ...prev, reviewOff: true, nextReview: undefined } } });
+  }
+  rateSD(key, Math.max(3, prev.confidence), { title });
+}
+
+/** Switch spaced-repetition reviews off (removes it from the revision queue) or back on. */
+export function setSDReviews(key: string, on: boolean) {
+  const prev = read().sd[key] ?? blankSD();
+  if (on) {
+    const rating = prev.confidence || 3;
+    updateSD(key, { reviewOff: false, nextReview: addDays(today(), reviewInterval(rating, prev.reviewCount)) });
+  } else {
+    updateSD(key, { reviewOff: true, nextReview: undefined });
+  }
+}
+
+/** Undo "complete": back to learning; history and notes are kept. */
+export function unmarkSDComplete(key: string) {
+  updateSD(key, { status: "learning" });
+}
+
+/** "Review later": push the next review to tomorrow without logging a rating. */
+export function snoozeSD(key: string) {
+  updateSD(key, { nextReview: addDays(today(), 1) });
+}
+
+export function addSDCustom(p: Omit<SDCustomProblem, "id" | "createdAt">): string {
+  const state = read();
+  const id = `sdc-${uid()}`;
+  write({ ...state, sdCustom: [...state.sdCustom, { ...p, id, createdAt: new Date().toISOString() }] });
+  return id;
+}
+
+export function removeSDCustom(id: string) {
+  const state = read();
+  const sd = { ...state.sd };
+  delete sd[`problem:${id}`];
+  write({ ...state, sd, sdCustom: state.sdCustom.filter((c) => c.id !== id) });
+}
+
+export function createDiagram(init: Partial<Pick<Diagram, "title" | "problemKey" | "nodes" | "edges" | "notes">> = {}): string {
+  const state = read();
+  const id = uid();
+  const now = new Date().toISOString();
+  const diagram: Diagram = {
+    id,
+    title: init.title ?? "Untitled architecture",
+    problemKey: init.problemKey,
+    notes: init.notes ?? "",
+    nodes: init.nodes ?? [],
+    edges: init.edges ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  write({ ...state, diagrams: { ...state.diagrams, [id]: diagram } });
+  return id;
+}
+
+export function updateDiagram(id: string, patch: Partial<Omit<Diagram, "id" | "createdAt">>) {
+  const state = read();
+  const prev = state.diagrams[id];
+  if (!prev) return;
+  write({ ...state, diagrams: { ...state.diagrams, [id]: { ...prev, ...patch, updatedAt: new Date().toISOString() } } });
+}
+
+export function deleteDiagram(id: string) {
+  const state = read();
+  const diagrams = { ...state.diagrams };
+  delete diagrams[id];
+  const sd = { ...state.sd };
+  delete sd[`diagram:${id}`];
+  write({ ...state, diagrams, sd });
+}
+
+export function addSDSession(session: Omit<SDSession, "id">): string {
+  const id = uid();
+  const state = read();
+  write({ ...state, sdSessions: [{ ...session, id }, ...state.sdSessions].slice(0, 500) });
+  if (session.confidence > 0) {
+    rateSD(session.itemKey, session.confidence, { kind: "session", title: session.title, durationSec: session.durationSec, note: session.toRevise });
+  }
+  return id;
+}
+
+export function removeSDSession(id: string) {
+  const state = read();
+  write({ ...state, sdSessions: state.sdSessions.filter((x) => x.id !== id) });
+}
+
+/** Due for an SD review: scheduled date has arrived. */
+export const isSDDue = (e: SDEntry | undefined) => !!e?.nextReview && e.history.length > 0 && e.nextReview <= today();
 
 /* ---------- backup ---------- */
 

@@ -77,18 +77,23 @@ export const MockSchema = z.object({
 export const EventSchema = z.object({
   id: text(64),
   at: iso,
-  type: z.enum(["solved", "reviewed", "failed", "mastered", "note", "pattern", "flagged", "mock"]),
+  type: z.enum([
+    "solved", "reviewed", "failed", "mastered", "note", "pattern", "flagged", "mock",
+    "sd-studied", "sd-reviewed", "sd-practiced", "sd-mastered", "sd-note", "sd-session",
+  ]),
   slug: slug.optional(),
   patternId: text(100).optional(),
+  sdKey: text(200).optional(),
   text: text(500),
 });
 
 export const PlanTaskSchema = z.object({
   id: text(250),
-  kind: z.enum(["new", "pattern", "failed", "theory"]),
+  kind: z.enum(["new", "pattern", "failed", "theory", "hld", "lld"]),
   label: text(100),
   slug: slug.optional(),
   patternId: text(100).optional(),
+  sdKey: text(200).optional(),
 });
 
 export const SettingsSchema = z.object({
@@ -96,6 +101,9 @@ export const SettingsSchema = z.object({
   dailyNew: z.number().int().min(1).max(10),
   mockTarget: z.number().int().min(1).max(100),
   sidebarCollapsed: z.boolean(),
+  navCollapsed: z.record(text(40), z.boolean()).optional(),
+  includeSD: z.boolean().optional(),
+  sdAutoReview: z.boolean().optional(),
 });
 
 export const MetaSchema = z
@@ -107,6 +115,77 @@ export const MetaSchema = z
   })
   .partial();
 
+/* ---------- System Design ---------- */
+
+const MAX_WORKSPACE_BYTES = 400_000;
+
+export const SDHistoryItemSchema = z.object({
+  date: day,
+  at: iso,
+  kind: z.enum(["study", "review", "practice", "session"]),
+  rating: z.number().int().min(1).max(5),
+  durationSec: z.number().int().min(0).max(86_400).optional(),
+  note: text(5_000).optional(),
+});
+
+export const SDEntrySchema = z.object({
+  status: z.enum(["todo", "learning", "done", "mastered"]),
+  confidence: z.number().int().min(0).max(5),
+  starred: z.boolean(),
+  notes: text(),
+  reviewCount: z.number().int().min(0),
+  lastReviewed: iso.optional(),
+  nextReview: day.optional(),
+  history: z.array(SDHistoryItemSchema).max(200),
+  // Free-form workspace document (requirements, APIs, classes…); bounded by size.
+  workspace: z
+    .record(z.string().max(100), z.unknown())
+    .refine((w) => JSON.stringify(w).length <= MAX_WORKSPACE_BYTES, "Workspace too large")
+    .optional(),
+  reviewOff: z.boolean().optional(),
+  updatedAt: iso,
+});
+
+const coord = z.number().min(-10_000).max(20_000);
+
+export const DiagramSchema = z.object({
+  id: text(64),
+  title: text(200),
+  problemKey: text(200).optional(),
+  notes: text(),
+  nodes: z
+    .array(z.object({ id: text(64), type: text(40), label: text(120), x: coord, y: coord, note: text(2_000).optional() }))
+    .max(300),
+  edges: z.array(z.object({ id: text(64), from: text(64), to: text(64), label: text(120).optional() })).max(600),
+  createdAt: iso,
+  updatedAt: iso,
+});
+
+export const SDCustomSchema = z.object({
+  id: z.string().regex(/^sdc-[a-z0-9]+$/),
+  track: z.enum(["hld", "lld"]),
+  title: text(300),
+  difficulty: z.enum(["Easy", "Medium", "Hard"]),
+  statement: text(10_000),
+  createdAt: iso,
+});
+
+export const SDSessionSchema = z.object({
+  id: text(64),
+  mode: z.enum(["hld", "lld", "mixed"]),
+  itemKey: text(200),
+  title: text(300),
+  startedAt: iso,
+  plannedMin: z.number().int().min(1).max(600),
+  durationSec: z.number().int().min(0).max(86_400),
+  phases: z.record(text(64), z.boolean()),
+  wentWell: text(10_000),
+  difficult: text(10_000),
+  missing: text(10_000),
+  toRevise: text(10_000),
+  confidence: z.number().int().min(0).max(5),
+});
+
 /** A change set: maps hold upserts (null = delete); arrays replace the whole collection. */
 export const PatchSchema = z.object({
   problems: z.record(slug, EntrySchema.nullable()).optional(),
@@ -116,6 +195,10 @@ export const PatchSchema = z.object({
   mocks: z.array(MockSchema).max(2_000).optional(),
   events: z.array(EventSchema).max(300).optional(),
   meta: MetaSchema.optional(),
+  sd: z.record(text(200), SDEntrySchema.nullable()).optional(),
+  diagrams: z.record(text(64), DiagramSchema.nullable()).optional(),
+  sdCustom: z.array(SDCustomSchema).max(2_000).optional(),
+  sdSessions: z.array(SDSessionSchema).max(500).optional(),
 });
 
 export type Patch = z.infer<typeof PatchSchema>;

@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { Library, ListChecks, Moon, Plus, Keyboard } from "lucide-react";
+import { ArrowLeftRight, Blocks, Boxes, Keyboard, Library, ListChecks, Moon, Plus, Shapes, Workflow } from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -15,33 +15,49 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DifficultyBadge, Kbd } from "@/components/kit";
 import { TopicIcon } from "@/components/topic-icon";
 import { allPatterns, topics } from "@/data/curriculum";
+import type { SDKind } from "@/data/sd";
 import { useCatalog } from "@/lib/catalog";
-import { NAV } from "./nav";
+import { useSDItems } from "@/lib/sd";
+import { moduleEntry, useModule } from "./module";
+import { MODULES, navItems, type ModuleId } from "./nav";
 
 const OPEN_EVENT = "patternwise:command";
-export const openCommandMenu = () =>
-  window.dispatchEvent(new Event(OPEN_EVENT));
+export const openCommandMenu = () => window.dispatchEvent(new Event(OPEN_EVENT));
 
 const isTyping = (t: EventTarget | null) =>
-  t instanceof HTMLElement &&
-  (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
+  t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
 
-/** ⌘K palette plus Linear-style "g then x" navigation shortcuts and "?" for help. */
+const SD_GROUPS: { kind: SDKind; heading: string; icon: typeof Blocks }[] = [
+  { kind: "concept", heading: "Concepts", icon: Blocks },
+  { kind: "pattern", heading: "Design patterns", icon: Shapes },
+  { kind: "problem", heading: "Problems", icon: Boxes },
+  { kind: "diagram", heading: "Architecture diagrams", icon: Workflow },
+];
+
+/**
+ * ⌘K palette and "g then x" shortcuts, scoped to the current module.
+ * "g 1" / "g 2" switch between DSA and System Design.
+ */
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [help, setHelp] = useState(false);
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
+  const mod = useModule();
+  const other: ModuleId = mod === "dsa" ? "sd" : "dsa";
   const catalog = useCatalog();
+  const sdItems = useSDItems();
+  const items = navItems(mod);
+
+  // Keep the latest module-scoped items available to the global key handler.
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  });
 
   useEffect(() => {
     let pendingG = 0;
@@ -62,8 +78,13 @@ export function CommandMenu() {
         return;
       }
       if (pendingG && Date.now() - pendingG < 1200) {
-        const item = NAV.find((n) => n.key === e.key.toLowerCase());
         pendingG = 0;
+        if (e.key === "1" || e.key === "2") {
+          e.preventDefault();
+          router.push(moduleEntry(e.key === "1" ? "dsa" : "sd"));
+          return;
+        }
+        const item = itemsRef.current.find((n) => n.key === e.key.toLowerCase());
         if (item) {
           e.preventDefault();
           router.push(item.href);
@@ -83,43 +104,39 @@ export function CommandMenu() {
     setOpen(false);
     router.push(href);
   };
+  const label = MODULES[mod].label;
 
   return (
     <>
-      <CommandDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Search"
-        description="Jump to a page, problem, pattern or topic"
-        className="sm:max-w-xl"
-      >
+      <CommandDialog open={open} onOpenChange={setOpen} title={`Search ${label}`} description={`Jump to anything in ${label}`} className="sm:max-w-xl">
         <Command>
-          <CommandInput placeholder="Search problems, patterns, topics…" />
+          <CommandInput placeholder={mod === "dsa" ? "Search DSA problems, patterns, topics…" : "Search concepts, patterns, design problems…"} />
           <CommandList className="max-h-[60vh]">
-            <CommandEmpty>No results.</CommandEmpty>
-            <CommandGroup heading="Go to">
-              {NAV.map((n) => {
+            <CommandEmpty>No results in {label}.</CommandEmpty>
+            <CommandGroup heading={`${label} pages`}>
+              {items.map((n) => {
                 const Icon = n.icon;
                 return (
-                  <CommandItem
-                    key={n.href}
-                    value={`page ${n.label}`}
-                    onSelect={() => go(n.href)}
-                  >
+                  <CommandItem key={n.href} value={`page ${n.label}`} onSelect={() => go(n.href)}>
                     <Icon aria-hidden />
                     {n.label}
-                    <CommandShortcut>G {n.key.toUpperCase()}</CommandShortcut>
+                    {n.key && <CommandShortcut>G {n.key.toUpperCase()}</CommandShortcut>}
                   </CommandItem>
                 );
               })}
             </CommandGroup>
             <CommandGroup heading="Actions">
+              <CommandItem value={`action switch to ${MODULES[other].label} module`} onSelect={() => go(moduleEntry(other))}>
+                <ArrowLeftRight aria-hidden />
+                Switch to {MODULES[other].label}
+                <CommandShortcut>G {other === "dsa" ? "1" : "2"}</CommandShortcut>
+              </CommandItem>
               <CommandItem
-                value="action add custom problem"
-                onSelect={() => go("/problems?add=1")}
+                value={`action add a ${mod === "dsa" ? "DSA" : "design"} problem`}
+                onSelect={() => go(mod === "dsa" ? "/problems?add=1" : "/system-design/problems?add=1")}
               >
                 <Plus aria-hidden />
-                Add a problem
+                Add a {mod === "dsa" ? "DSA" : "design"} problem
               </CommandItem>
               <CommandItem
                 value="action toggle theme dark light"
@@ -144,51 +161,58 @@ export function CommandMenu() {
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
-            <CommandGroup heading="Topics">
-              {topics.map((t) => (
-                <CommandItem
-                  key={t.id}
-                  value={`topic ${t.name}`}
-                  onSelect={() => go(`/topics/${t.id}`)}
-                >
-                  <TopicIcon
-                    id={t.id}
-                    className="size-5 rounded-md [&_svg]:size-3"
-                  />
-                  {t.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            <CommandGroup heading="Patterns">
-              {allPatterns.map(({ pattern, topic }) => (
-                <CommandItem
-                  key={pattern.id}
-                  value={`pattern ${pattern.name} ${topic.name}`}
-                  onSelect={() => go(`/patterns/${pattern.id}`)}
-                >
-                  <Library aria-hidden />
-                  <span className="truncate">{pattern.name}</span>
-                  <span className="ml-auto truncate text-xs text-muted-foreground">
-                    {topic.name}
-                  </span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            <CommandGroup heading="Problems">
-              {catalog.map(({ problem, pattern }) => (
-                <CommandItem
-                  key={problem.slug}
-                  value={`problem ${problem.title} ${pattern.name} ${problem.slug}`}
-                  onSelect={() => go(`/problems/${problem.slug}`)}
-                >
-                  <ListChecks aria-hidden />
-                  <span className="truncate">{problem.title}</span>
-                  <span className="ml-auto">
-                    <DifficultyBadge difficulty={problem.difficulty} />
-                  </span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+
+            {mod === "dsa" ? (
+              <>
+                <CommandGroup heading="Topics">
+                  {topics.map((t) => (
+                    <CommandItem key={t.id} value={`topic ${t.name}`} onSelect={() => go(`/topics/${t.id}`)}>
+                      <TopicIcon id={t.id} className="size-5 rounded-md [&_svg]:size-3" />
+                      {t.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                <CommandGroup heading="Patterns">
+                  {allPatterns.map(({ pattern, topic }) => (
+                    <CommandItem key={pattern.id} value={`pattern ${pattern.name} ${topic.name}`} onSelect={() => go(`/patterns/${pattern.id}`)}>
+                      <Library aria-hidden />
+                      <span className="truncate">{pattern.name}</span>
+                      <span className="ml-auto truncate text-xs text-muted-foreground">{topic.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                <CommandGroup heading="Problems">
+                  {catalog.map(({ problem, pattern }) => (
+                    <CommandItem key={problem.slug} value={`problem ${problem.title} ${pattern.name} ${problem.slug}`} onSelect={() => go(`/problems/${problem.slug}`)}>
+                      <ListChecks aria-hidden />
+                      <span className="truncate">{problem.title}</span>
+                      <span className="ml-auto">
+                        <DifficultyBadge difficulty={problem.difficulty} />
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            ) : (
+              SD_GROUPS.map(({ kind, heading, icon: Icon }) => {
+                const rows = sdItems.filter((x) => x.kind === kind);
+                if (!rows.length) return null;
+                return (
+                  <CommandGroup key={kind} heading={heading}>
+                    {rows.map((x) => (
+                      <CommandItem key={x.key} value={`${kind} ${x.title} ${x.group} ${x.track}`} onSelect={() => go(x.href)}>
+                        <Icon aria-hidden />
+                        <span className="truncate">{x.title}</span>
+                        <span className="ml-auto flex shrink-0 items-center gap-2">
+                          {x.difficulty && <DifficultyBadge difficulty={x.difficulty} />}
+                          <span className="font-mono text-[10px] uppercase text-muted-foreground">{x.track}</span>
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                );
+              })
+            )}
           </CommandList>
         </Command>
       </CommandDialog>
@@ -196,34 +220,43 @@ export function CommandMenu() {
       <Dialog open={help} onOpenChange={setHelp}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Keyboard shortcuts</DialogTitle>
+            <DialogTitle>{label} keyboard shortcuts</DialogTitle>
           </DialogHeader>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center justify-between">
-              Search everything
+              Search {label}
               <span className="flex gap-1">
                 <Kbd>⌘</Kbd>
                 <Kbd>K</Kbd>
               </span>
             </li>
-            {NAV.map((n) => (
-              <li key={n.href} className="flex items-center justify-between">
-                Go to {n.label}
-                <span className="flex gap-1">
-                  <Kbd>G</Kbd>
-                  <Kbd>{n.key.toUpperCase()}</Kbd>
-                </span>
-              </li>
-            ))}
+            <li className="flex items-center justify-between">
+              Switch to DSA / System Design
+              <span className="flex gap-1">
+                <Kbd>G</Kbd>
+                <Kbd>1</Kbd>
+                <span className="text-muted-foreground">/</span>
+                <Kbd>G</Kbd>
+                <Kbd>2</Kbd>
+              </span>
+            </li>
+            {items
+              .filter((n) => n.key)
+              .map((n) => (
+                <li key={n.href} className="flex items-center justify-between">
+                  Go to {n.label}
+                  <span className="flex gap-1">
+                    <Kbd>G</Kbd>
+                    <Kbd>{n.key!.toUpperCase()}</Kbd>
+                  </span>
+                </li>
+              ))}
             <li className="flex items-center justify-between">
               Show this help
               <Kbd>?</Kbd>
             </li>
           </ul>
-          <p className="text-xs text-muted-foreground">
-            ⌘P and ⌘R are left to the browser (print and reload), so pages use
-            G-sequences instead.
-          </p>
+          <p className="text-xs text-muted-foreground">⌘P and ⌘R are left to the browser (print and reload), so pages use G-sequences instead.</p>
         </DialogContent>
       </Dialog>
     </>

@@ -169,6 +169,16 @@
   }
 }
 
+/* Architecture / UML canvas: subtle dotted grid on a slightly recessed surface. */
+@layer components {
+  .sd-canvas {
+    background-color: var(--surface);
+    background-image:
+      radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--foreground) 13%, transparent) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

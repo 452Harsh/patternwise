@@ -116,16 +116,23 @@ export function topicStat(topic: Topic, progress: ProgressMap) {
 
 /* ---------- activity & streaks ---------- */
 
-export function activityByDay(state: State): Map<string, number> {
+export type Scope = "dsa" | "sd";
+
+/** Days with activity: DSA attempts + DSA mock interviews, or System Design reviews/practice/sessions. */
+export function activityByDay(state: State, scope: Scope = "dsa"): Map<string, number> {
   const counts = new Map<string, number>();
   const bump = (d: string) => counts.set(d, (counts.get(d) ?? 0) + 1);
-  for (const e of Object.values(state.problems)) for (const h of e.history) bump(h.date);
-  for (const m of state.mocks) bump(m.date);
+  if (scope === "dsa") {
+    for (const e of Object.values(state.problems)) for (const h of e.history) bump(h.date);
+    for (const m of state.mocks) bump(m.date);
+  } else {
+    for (const e of Object.values(state.sd)) for (const h of e.history) bump(h.date);
+  }
   return counts;
 }
 
-export function streaks(state: State) {
-  const days = activityByDay(state);
+export function streaks(state: State, scope: Scope = "dsa") {
+  const days = activityByDay(state, scope);
   const t = today();
   let current = 0;
   // A streak survives until the end of today even if today has no activity yet.
