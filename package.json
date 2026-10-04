@@ -10,6 +10,7 @@
     "check:data": "tsx scripts/check-data.ts",
     "check:coach": "tsx scripts/check-coach.ts",
     "coach:index": "tsx --env-file=.env.local --conditions=react-server scripts/index-knowledge.ts",
+    "demo": "tsx --env-file=.env.local --conditions=react-server scripts/demo.ts",
     "verify:links": "tsx scripts/verify-leetcode.ts"
   },
   "dependencies": {

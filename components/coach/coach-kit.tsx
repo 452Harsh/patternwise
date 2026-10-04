@@ -139,12 +139,21 @@ export function useCoachStream() {
     let full = "";
     try {
       await syncNow();
-      const res = await fetch("/api/coach/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...req, date: today() }),
-        signal: c.signal,
-      });
+      const send = () =>
+        fetch("/api/coach/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...req, date: today() }),
+          signal: c.signal,
+        });
+      let res: Response;
+      try {
+        res = await send();
+      } catch (err) {
+        // A stale keep-alive connection can fail before the request reaches the server; retry once.
+        if ((err as Error).name === "AbortError") throw err;
+        res = await send();
+      }
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `Coach request failed (${res.status})`);
@@ -196,6 +205,27 @@ export function useCoachStream() {
 
 /* ---------- rendering ---------- */
 
+const LATEX: [RegExp, string][] = [
+  [/\\(rightarrow|to|Rightarrow|implies)\b/g, "→"],
+  [/\\(leftarrow|gets)\b/g, "←"],
+  [/\\(leq|le)\b/g, "≤"],
+  [/\\(geq|ge)\b/g, "≥"],
+  [/\\neq\b/g, "≠"],
+  [/\\times\b/g, "×"],
+  [/\\cdot\b/g, "·"],
+  [/\\approx\b/g, "≈"],
+  [/\\(log|ln|max|min)\b/g, "$1"],
+  [/\\[{}]/g, ""],
+];
+
+/** Small models sometimes emit inline LaTeX ($\rightarrow$, $O(n \log n)$); show it as plain text. */
+function plainMath(md: string): string {
+  return md.replace(/\$([^$\n]{1,60})\$/g, (match, inner: string) =>
+    // Only spans that are clearly maths (a LaTeX command or big-O); "$5 and $10" stays as written.
+    /\\[a-zA-Z{}]/.test(inner) || /^\s*O\(.+\)\s*$/.test(inner) ? LATEX.reduce((t, [re, to]) => t.replace(re, to), inner).replace(/\s+/g, " ").trim() : match,
+  );
+}
+
 export function CoachMarkdown({ children, className }: { children: string; className?: string }) {
   return (
     <div
@@ -208,7 +238,7 @@ export function CoachMarkdown({ children, className }: { children: string; class
         className,
       )}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{plainMath(children)}</ReactMarkdown>
     </div>
   );
 }

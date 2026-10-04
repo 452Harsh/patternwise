@@ -25,14 +25,19 @@ async function post(url: string, body: unknown, apiKey?: string, signal?: AbortS
 /**
  * Some hosted Gemma 4 endpoints always reason first and stream it inline as `<thought>…</thought>`,
  * with no way to switch it off. Drop that block so only the answer reaches the user.
+ * Occasionally the model puts its whole formatted answer inside the block and nothing after it;
+ * then the block's text is the answer.
  */
 export async function* withoutThoughts(chunks: AsyncIterable<string>): AsyncIterable<string> {
   const OPEN = "<thought>";
   const CLOSE = "</thought>";
   let state: "start" | "thinking" | "trim" | "answer" = "start";
   let buf = "";
+  let answered = false;
+  let thought = "";
   for await (const c of chunks) {
     if (state === "answer") {
+      answered ||= c.trim().length > 0;
       yield c;
       continue;
     }
@@ -41,6 +46,7 @@ export async function* withoutThoughts(chunks: AsyncIterable<string>): AsyncIter
       const t = c.trimStart();
       if (t) {
         state = "answer";
+        answered = true;
         yield t;
       }
       continue;
@@ -51,6 +57,7 @@ export async function* withoutThoughts(chunks: AsyncIterable<string>): AsyncIter
       if (lead.length < OPEN.length && OPEN.startsWith(lead)) continue; // can't tell yet
       if (!lead.startsWith(OPEN)) {
         state = "answer";
+        answered ||= buf.trim().length > 0;
         yield buf;
         buf = "";
         continue;
@@ -60,15 +67,31 @@ export async function* withoutThoughts(chunks: AsyncIterable<string>): AsyncIter
     }
     const end = buf.indexOf(CLOSE);
     if (end === -1) {
-      buf = buf.slice(-CLOSE.length); // keep a tail in case the tag is split across chunks
+      // Keep a tail in case the closing tag is split across chunks.
+      if (buf.length > CLOSE.length && thought.length < 40_000) thought += buf.slice(0, -CLOSE.length);
+      buf = buf.slice(-CLOSE.length);
       continue;
     }
+    thought += buf.slice(0, end);
     const rest = buf.slice(end + CLOSE.length).trimStart();
     buf = "";
     state = rest ? "answer" : "trim";
-    if (rest) yield rest;
+    if (rest) {
+      answered = true;
+      yield rest;
+    }
   }
-  if (state === "start" && buf) yield buf;
+  if (state === "start" && buf.trim()) {
+    answered = true;
+    yield buf;
+  }
+  // Nothing after the block: if the block reads like a formatted answer (Markdown headings), it is the answer.
+  if (!answered && /\*\*[^*\n]{2,60}\*\*/.test(thought) && !/^\s*\*\s+(User|Constraint|Goal|Task)\b/m.test(thought.slice(0, 300))) {
+    yield thought.trim();
+    return;
+  }
+  // The model spent its whole budget reasoning and never answered: say so instead of returning nothing.
+  if (!answered) throw new AIUnavailableError("The model ran out of room while reasoning and didn't answer. Please try again.");
 }
 
 /** Fold system instructions into the first user turn, for servers that reject the system role. */
@@ -98,7 +121,7 @@ export function openAIChat(baseUrl: string, model: string, apiKey?: string): Cha
   async function* raw(messages: ChatMessage[], opts: ChatOptions): AsyncIterable<string> {
     // Headroom for models that reason before answering (the reasoning is stripped, the answer still fits).
     const send = (msgs: ChatMessage[]) =>
-      post(`${baseUrl}/chat/completions`, { model, messages: msgs, stream: true, temperature: opts.temperature ?? 0.4, max_tokens: (opts.maxTokens ?? 900) + 1024 }, apiKey, opts.signal);
+      post(`${baseUrl}/chat/completions`, { model, messages: msgs, stream: true, temperature: opts.temperature ?? 0.4, max_tokens: (opts.maxTokens ?? 900) + 2048 }, apiKey, opts.signal);
     let res: Response;
     try {
       res = await send(NO_SYSTEM.has(id) ? foldSystem(messages) : messages);
