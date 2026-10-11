@@ -10,7 +10,7 @@ Part of the [System Design module](system-design.md). Track id: `"lld"`.
 | `principles` | Design Principles (SOLID, DRY, KISS, …) |
 | `uml-design` | UML & Class Design |
 
-LLD concepts share the `SDConcept` shape with HLD concepts. They may also include a short code `example` (Java, Python, TypeScript or C++), which is rendered by `components/code-block.tsx`.
+LLD concepts share the `SDConcept` shape with HLD concepts. They may also include a short code `example` (Python; the site is Python-only), which is rendered by `components/code-block.tsx`.
 
 ## Design patterns: 19 GoF patterns (`data/sd/lld-patterns.ts`)
 
@@ -26,7 +26,7 @@ Each `LLDPattern` has the following fields:
 - a `uml` spec (`UMLSpec`: classes and relations)
 - a real-world `example`
 - `advantages` and `disadvantages`
-- `code` in Java and Python
+- `code` in Python
 - `related` patterns and linked `problems`
 
 The page is `components/sd/sd-pattern-detail.tsx`.
@@ -71,7 +71,7 @@ The workspace is saved into `SDEntry.workspace` (`LLDWorkspaceData`; `lldDefault
 4. **Relationships:** from, to and kind (inheritance, realization, composition, aggregation, association or dependency).
 5. **UML class diagram:** generated from the classes and relationships by `toUML`. It's rendered by `components/sd/uml-diagram.tsx` and its nodes can be dragged.
 6. **Design patterns:** attach patterns from the library.
-7. **Code:** in Java, C++, Python or TypeScript.
+7. **Code:** in Python. Code saved earlier in other languages stays in the data but isn't shown.
 8. **Design review:** a self-check list (`REVIEW_CHECKLIST`) plus "What I'd improve".
 
 ## UML renderer (`components/sd/uml-diagram.tsx`)

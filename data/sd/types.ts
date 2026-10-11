@@ -104,7 +104,7 @@ export interface LLDPattern {
   example: string;
   advantages: string[];
   disadvantages: string[];
-  code: { java: string; python: string };
+  code: { python: string };
   /** LLD pattern ids */
   related: string[];
   /** LLD problem ids */

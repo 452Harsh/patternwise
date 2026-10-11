@@ -47,7 +47,7 @@ export const LLD_PATTERNS: LLDPattern[] = [
       ],
     },
     example:
-      "Java's Collection.iterator() is a factory method: each collection subclass returns its own Iterator implementation. UI frameworks also use it so each platform's dialog creates its own native buttons.",
+      "Python's __iter__() is a factory method: each collection class returns its own iterator object. UI frameworks also use it so each platform's dialog creates its own native buttons.",
     advantages: [
       "Decouples client code from concrete product classes.",
       "Follows the Open/Closed Principle: add products by adding creators, not editing callers.",
@@ -60,45 +60,6 @@ export const LLD_PATTERNS: LLDPattern[] = [
       "Subclassing just to change one created type is heavier than passing a function or class reference.",
     ],
     code: {
-      java: `interface Notification {
-    void send(String message);
-}
-
-class EmailNotification implements Notification {
-    public void send(String message) { System.out.println("Email: " + message); }
-}
-
-class SmsNotification implements Notification {
-    public void send(String message) { System.out.println("SMS: " + message); }
-}
-
-abstract class NotificationCreator {
-    // The factory method: subclasses decide which product to create
-    protected abstract Notification createNotification();
-
-    public void notifyUser(String message) {
-        Notification notification = createNotification();
-        notification.send(message);
-    }
-}
-
-class EmailCreator extends NotificationCreator {
-    protected Notification createNotification() { return new EmailNotification(); }
-}
-
-class SmsCreator extends NotificationCreator {
-    protected Notification createNotification() { return new SmsNotification(); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        NotificationCreator creator = new EmailCreator();
-        creator.notifyUser("Your order has shipped");
-
-        creator = new SmsCreator();
-        creator.notifyUser("Your OTP is 4821");
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -196,7 +157,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "Java's javax.xml.parsers.DocumentBuilderFactory returns a provider-specific family of parser objects. Cross-platform UI toolkits use one factory per OS to create matching native widgets.",
+      "Python's DB-API works this way: each driver module (sqlite3, psycopg) hands back its own family of connection and cursor objects. Cross-platform UI toolkits use one factory per OS to create matching native widgets.",
     advantages: [
       "Guarantees products from one family are compatible with each other.",
       "Isolates concrete classes from client code.",
@@ -209,47 +170,6 @@ if __name__ == "__main__":
       "Can be over-engineering when only one family exists today.",
     ],
     code: {
-      java: `interface Button { String render(); }
-interface Checkbox { String render(); }
-
-class LightButton implements Button { public String render() { return "[Light Button]"; } }
-class LightCheckbox implements Checkbox { public String render() { return "[Light Checkbox]"; } }
-class DarkButton implements Button { public String render() { return "[Dark Button]"; } }
-class DarkCheckbox implements Checkbox { public String render() { return "[Dark Checkbox]"; } }
-
-interface GUIFactory {
-    Button createButton();
-    Checkbox createCheckbox();
-}
-
-class LightFactory implements GUIFactory {
-    public Button createButton() { return new LightButton(); }
-    public Checkbox createCheckbox() { return new LightCheckbox(); }
-}
-
-class DarkFactory implements GUIFactory {
-    public Button createButton() { return new DarkButton(); }
-    public Checkbox createCheckbox() { return new DarkCheckbox(); }
-}
-
-class Application {
-    private final GUIFactory factory;
-
-    Application(GUIFactory factory) { this.factory = factory; }
-
-    void renderForm() {
-        // Both widgets come from the same family, so they always match
-        System.out.println(factory.createButton().render() + " " + factory.createCheckbox().render());
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        boolean darkMode = true;
-        GUIFactory factory = darkMode ? new DarkFactory() : new LightFactory();
-        new Application(factory).renderForm();
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -369,7 +289,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "Java's StringBuilder and java.net.http.HttpRequest.newBuilder() are builders, as are Lombok's @Builder classes and many SQL query builders.",
+      "argparse.ArgumentParser (add arguments step by step, then parse_args()) and SQLAlchemy's select(...).where(...).order_by(...) are builders.",
     advantages: [
       "Readable, self-documenting construction with fluent method chaining.",
       "Produces immutable objects without telescoping constructors.",
@@ -382,59 +302,6 @@ if __name__ == "__main__":
       "Overkill for small objects.",
     ],
     code: {
-      java: `import java.util.LinkedHashMap;
-import java.util.Map;
-
-final class HttpRequest {
-    final String method, url, body;
-    final Map<String, String> headers;
-    final int timeoutMs;
-
-    HttpRequest(RequestBuilder b) {               // only the builder calls this
-        this.url = b.url;
-        this.method = b.method;
-        this.headers = new LinkedHashMap<>(b.headers);
-        this.body = b.body;
-        this.timeoutMs = b.timeoutMs;
-    }
-
-    public String toString() {
-        return method + " " + url + " " + headers + " body=" + body + " timeout=" + timeoutMs + "ms";
-    }
-}
-
-class RequestBuilder {
-    final String url;                             // required
-    String method = "GET";                        // optional, with defaults
-    final Map<String, String> headers = new LinkedHashMap<>();
-    String body = "";
-    int timeoutMs = 5000;
-
-    RequestBuilder(String url) { this.url = url; }
-    RequestBuilder method(String m) { this.method = m; return this; }
-    RequestBuilder header(String k, String v) { headers.put(k, v); return this; }
-    RequestBuilder body(String b) { this.body = b; return this; }
-    RequestBuilder timeout(int ms) { this.timeoutMs = ms; return this; }
-
-    HttpRequest build() {
-        if (!body.isEmpty() && method.equals("GET")) {
-            throw new IllegalStateException("GET cannot have a body");
-        }
-        return new HttpRequest(this);
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        HttpRequest req = new RequestBuilder("https://api.example.com/orders")
-            .method("POST")
-            .header("Content-Type", "application/json")
-            .body("item=42")
-            .timeout(2000)
-            .build();
-        System.out.println(req);
-    }
-}`,
       python: `from dataclasses import dataclass
 
 
@@ -527,7 +394,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "java.lang.Runtime.getRuntime() returns the single Runtime for the JVM. Application-wide loggers and configuration objects are often singletons.",
+      "Python modules are singletons: a module is imported once and cached in sys.modules. logging.getLogger(name) always returns the same logger for a name, and app-wide configuration objects are often singletons.",
     advantages: [
       "Guarantees a single instance and a well-known access point.",
       "Lazy initialisation avoids paying the cost until first use.",
@@ -540,44 +407,6 @@ if __name__ == "__main__":
       "Violates the Single Responsibility Principle by managing its own lifecycle.",
     ],
     code: {
-      java: `final class Logger {
-    private static volatile Logger instance;   // volatile for safe publication
-    private int lineCount = 0;
-
-    private Logger() { }                       // no outside construction
-
-    public static Logger getInstance() {
-        if (instance == null) {                // first check, no lock
-            synchronized (Logger.class) {
-                if (instance == null) {        // second check, with lock
-                    instance = new Logger();
-                }
-            }
-        }
-        return instance;
-    }
-
-    public synchronized void log(String msg) {
-        lineCount++;
-        System.out.println("[" + lineCount + "] " + msg);
-    }
-}
-
-class OrderService {
-    void placeOrder() { Logger.getInstance().log("Order placed"); }
-}
-
-class PaymentService {
-    void charge() { Logger.getInstance().log("Payment charged"); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        new OrderService().placeOrder();
-        new PaymentService().charge();
-        System.out.println(Logger.getInstance() == Logger.getInstance()); // true
-    }
-}`,
       python: `import threading
 
 
@@ -665,7 +494,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "JavaScript's object model is prototype-based, and Java's Cloneable/clone() exists for this purpose. Game engines clone pre-configured enemy or particle templates instead of rebuilding them.",
+      "Python's copy.copy() and copy.deepcopy() exist for this purpose. Game engines clone pre-configured enemy or particle templates instead of rebuilding them.",
     advantages: [
       "Copies objects without coupling to their concrete classes.",
       "Avoids repeated expensive initialisation.",
@@ -675,61 +504,9 @@ if __name__ == "__main__":
     disadvantages: [
       "Deep versus shallow copy must be handled carefully to avoid shared mutable state.",
       "Cloning objects with circular references or external resources is tricky.",
-      "Java's built-in clone() is widely considered awkward, so copy constructors are often preferred.",
+      "copy.deepcopy() can copy far more than you intended (and is slow), so an explicit clone() method or __deepcopy__ is often preferred.",
     ],
     code: {
-      java: `import java.util.HashMap;
-import java.util.Map;
-
-abstract class Shape {
-    int x, y;
-    String color;
-
-    Shape() { }
-    Shape(Shape source) {                      // copy constructor used by clone()
-        this.x = source.x;
-        this.y = source.y;
-        this.color = source.color;
-    }
-    public abstract Shape clone();
-}
-
-class Circle extends Shape {
-    int radius;
-    Circle() { }
-    Circle(Circle source) { super(source); this.radius = source.radius; }
-    public Shape clone() { return new Circle(this); }
-    public String toString() { return color + " circle r=" + radius + " at (" + x + "," + y + ")"; }
-}
-
-class Rectangle extends Shape {
-    int width, height;
-    Rectangle() { }
-    Rectangle(Rectangle source) { super(source); this.width = source.width; this.height = source.height; }
-    public Shape clone() { return new Rectangle(this); }
-    public String toString() { return color + " rect " + width + "x" + height; }
-}
-
-class ShapeRegistry {
-    private final Map<String, Shape> prototypes = new HashMap<>();
-    void register(String key, Shape s) { prototypes.put(key, s); }
-    Shape create(String key) { return prototypes.get(key).clone(); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        Circle base = new Circle();
-        base.radius = 10;
-        base.color = "red";
-
-        ShapeRegistry registry = new ShapeRegistry();
-        registry.register("big-red-circle", base);
-
-        Shape copy = registry.create("big-red-circle");
-        copy.x = 5;                            // does not affect the prototype
-        System.out.println(copy + " | prototype: " + base);
-    }
-}`,
       python: `import copy
 
 
@@ -835,7 +612,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "Java's Arrays.asList adapts an array to the List interface, and InputStreamReader adapts a byte InputStream to a character Reader.",
+      "io.TextIOWrapper adapts a binary stream to a text stream, and csv.reader adapts any iterable of lines into rows.",
     advantages: [
       "Reuses existing code without modifying it.",
       "Keeps translation logic separate from business logic (Single Responsibility).",
@@ -847,48 +624,6 @@ if __name__ == "__main__":
       "Too many adapters can hide the fact that interfaces should really be redesigned.",
     ],
     code: {
-      java: `// Target interface that our checkout code expects
-interface PaymentProcessor {
-    boolean pay(double amount);
-}
-
-// Adaptee: a third-party SDK with an incompatible API we cannot modify
-class LegacyGateway {
-    public int makePayment(long cents, String currency) {
-        System.out.println("Legacy gateway charged " + cents + " " + currency + " cents");
-        return 200;   // status code
-    }
-}
-
-// Adapter: implements the target and delegates to the adaptee
-class LegacyGatewayAdapter implements PaymentProcessor {
-    private final LegacyGateway gateway;
-
-    LegacyGatewayAdapter(LegacyGateway gateway) { this.gateway = gateway; }
-
-    public boolean pay(double amount) {
-        long cents = Math.round(amount * 100);          // translate units
-        int status = gateway.makePayment(cents, "USD"); // translate the call
-        return status == 200;                           // translate the result
-    }
-}
-
-class CheckoutService {
-    private final PaymentProcessor processor;
-
-    CheckoutService(PaymentProcessor processor) { this.processor = processor; }
-
-    void checkout(double total) {
-        System.out.println(processor.pay(total) ? "Order confirmed" : "Payment failed");
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        PaymentProcessor processor = new LegacyGatewayAdapter(new LegacyGateway());
-        new CheckoutService(processor).checkout(49.99);
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -972,7 +707,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "Java's I/O streams are decorators: new BufferedInputStream(new GZIPInputStream(new FileInputStream(f))). Python's function decorators and HTTP middleware follow the same idea.",
+      "Python's I/O stack is decorators: io.BufferedReader(gzip.GzipFile(...)) wraps one stream in another. @functools.lru_cache and HTTP middleware follow the same idea.",
     advantages: [
       "Adds behaviour at runtime without modifying or subclassing the original.",
       "Features can be combined in any order and quantity.",
@@ -986,41 +721,6 @@ if __name__ == "__main__":
       "Object identity checks fail because the decorator is a different object.",
     ],
     code: {
-      java: `interface Beverage {
-    String description();
-    double cost();
-}
-
-class Espresso implements Beverage {
-    public String description() { return "Espresso"; }
-    public double cost() { return 2.00; }
-}
-
-abstract class BeverageDecorator implements Beverage {
-    protected final Beverage inner;           // the wrapped component
-
-    BeverageDecorator(Beverage inner) { this.inner = inner; }
-}
-
-class Milk extends BeverageDecorator {
-    Milk(Beverage inner) { super(inner); }
-    public String description() { return inner.description() + ", milk"; }
-    public double cost() { return inner.cost() + 0.50; }
-}
-
-class Caramel extends BeverageDecorator {
-    Caramel(Beverage inner) { super(inner); }
-    public String description() { return inner.description() + ", caramel"; }
-    public double cost() { return inner.cost() + 0.75; }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        // Decorators stack at runtime in any combination
-        Beverage order = new Caramel(new Milk(new Milk(new Espresso())));
-        System.out.println(order.description() + " = " + String.format("%.2f", order.cost()));
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -1117,46 +817,6 @@ if __name__ == "__main__":
       "May hide useful capabilities if it is the only access path.",
     ],
     code: {
-      java: `class InventoryService {
-    boolean reserve(String sku, int qty) {
-        System.out.println("Reserved " + qty + " x " + sku);
-        return true;
-    }
-}
-
-class PaymentService {
-    boolean charge(String userId, double amount) {
-        System.out.println("Charged " + userId + " " + amount);
-        return true;
-    }
-}
-
-class ShippingService {
-    String schedule(String userId, String sku) {
-        System.out.println("Shipping " + sku + " to " + userId);
-        return "TRK-1001";
-    }
-}
-
-// Facade: one simple entry point that orchestrates the subsystems
-class OrderFacade {
-    private final InventoryService inventory = new InventoryService();
-    private final PaymentService payments = new PaymentService();
-    private final ShippingService shipping = new ShippingService();
-
-    String placeOrder(String userId, String sku, int qty, double price) {
-        if (!inventory.reserve(sku, qty)) throw new IllegalStateException("Out of stock");
-        if (!payments.charge(userId, qty * price)) throw new IllegalStateException("Payment declined");
-        return shipping.schedule(userId, sku);
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        String tracking = new OrderFacade().placeOrder("user-42", "BOOK-7", 2, 15.0);
-        System.out.println("Tracking: " + tracking);
-    }
-}`,
       python: `class InventoryService:
     def reserve(self, sku: str, qty: int) -> bool:
         print("Reserved", qty, "x", sku)
@@ -1236,7 +896,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "Hibernate returns lazy-loading proxies for entities, Spring wraps beans in proxies for @Transactional, and Java RMI stubs are remote proxies.",
+      "SQLAlchemy lazy-loads relationships behind proxy attributes, unittest.mock.Mock stands in for real objects, and xmlrpc.client.ServerProxy is a remote proxy.",
     advantages: [
       "Controls access to the real object without clients noticing.",
       "Enables lazy initialisation, caching, access control and remote access.",
@@ -1248,53 +908,6 @@ if __name__ == "__main__":
       "More classes to maintain.",
     ],
     code: {
-      java: `import java.util.ArrayList;
-import java.util.List;
-
-interface Image {
-    void display();
-}
-
-class RealImage implements Image {
-    private final String filename;
-
-    RealImage(String filename) {
-        this.filename = filename;
-        System.out.println("Loading " + filename + " from disk (expensive)");
-    }
-    public void display() { System.out.println("Displaying " + filename); }
-}
-
-// Virtual proxy: same interface, defers creation until first real use
-class ImageProxy implements Image {
-    private final String filename;
-    private RealImage real;                    // created lazily
-
-    ImageProxy(String filename) { this.filename = filename; }
-
-    public void display() {
-        if (real == null) {
-            real = new RealImage(filename);
-        }
-        real.display();
-    }
-}
-
-class Gallery {
-    private final List<Image> images = new ArrayList<>();
-    void add(Image image) { images.add(image); }
-    void show(int index) { images.get(index).display(); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        Gallery gallery = new Gallery();
-        gallery.add(new ImageProxy("a.png"));  // nothing loaded yet
-        gallery.add(new ImageProxy("b.png"));
-        gallery.show(0);                       // loads a.png, then displays
-        gallery.show(0);                       // already loaded: displays only
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -1387,7 +1000,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "In Java Swing, a JPanel (Container) holds other Components and is itself a Component. The browser DOM is a composite of element and text nodes.",
+      "In Tkinter, a Frame holds other widgets and is itself a widget. Python's ast module (a Module node containing statement nodes) and the browser DOM are composites too.",
     advantages: [
       "Clients treat leaves and composites uniformly, simplifying code.",
       "Easy to add new node types (Open/Closed).",
@@ -1399,52 +1012,6 @@ if __name__ == "__main__":
       "Deep trees can make recursive operations expensive without caching.",
     ],
     code: {
-      java: `import java.util.ArrayList;
-import java.util.List;
-
-abstract class FileSystemNode {
-    protected final String name;
-    FileSystemNode(String name) { this.name = name; }
-    abstract long getSize();
-    abstract void print(String indent);
-}
-
-class File extends FileSystemNode {
-    private final long size;
-    File(String name, long size) { super(name); this.size = size; }
-    long getSize() { return size; }
-    void print(String indent) { System.out.println(indent + name + " (" + size + " B)"); }
-}
-
-class Directory extends FileSystemNode {
-    private final List<FileSystemNode> children = new ArrayList<>();
-    Directory(String name) { super(name); }
-
-    Directory add(FileSystemNode node) { children.add(node); return this; }
-
-    long getSize() {                           // recurse, treating children uniformly
-        long total = 0;
-        for (FileSystemNode child : children) total += child.getSize();
-        return total;
-    }
-
-    void print(String indent) {
-        System.out.println(indent + name + "/ (" + getSize() + " B)");
-        for (FileSystemNode child : children) child.print(indent + "  ");
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        Directory root = new Directory("root")
-            .add(new File("readme.md", 120))
-            .add(new Directory("src")
-                .add(new File("App.java", 2048))
-                .add(new File("Util.java", 512)));
-        root.print("");
-        System.out.println("Total: " + root.getSize());
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -1544,7 +1111,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "JDBC is a bridge: application code uses the java.sql API (abstraction) while vendor drivers provide the implementation. A notification type (alert, digest) sent over different channels (email, SMS) is another common case.",
+      "Python's DB-API is a bridge: application code uses the same connect()/cursor()/execute() API (abstraction) while each driver provides the implementation. A notification type (alert, digest) sent over different channels (email, SMS) is another common case.",
     advantages: [
       "Avoids a class explosion from combining two dimensions.",
       "Abstraction and implementation evolve independently (Open/Closed).",
@@ -1557,53 +1124,6 @@ if __name__ == "__main__":
       "The implementor interface can become a lowest-common-denominator API.",
     ],
     code: {
-      java: `interface Device {
-    boolean isEnabled();
-    void setEnabled(boolean on);
-    int getVolume();
-    void setVolume(int volume);
-}
-
-class Tv implements Device {
-    private boolean on;
-    private int volume = 30;
-    public boolean isEnabled() { return on; }
-    public void setEnabled(boolean on) { this.on = on; System.out.println("TV power " + on); }
-    public int getVolume() { return volume; }
-    public void setVolume(int v) { volume = Math.max(0, Math.min(100, v)); System.out.println("TV volume " + volume); }
-}
-
-class Radio implements Device {
-    private boolean on;
-    private int volume = 50;
-    public boolean isEnabled() { return on; }
-    public void setEnabled(boolean on) { this.on = on; System.out.println("Radio power " + on); }
-    public int getVolume() { return volume; }
-    public void setVolume(int v) { volume = Math.max(0, Math.min(100, v)); System.out.println("Radio volume " + volume); }
-}
-
-// Abstraction: holds a reference to the implementation (the bridge)
-class RemoteControl {
-    protected final Device device;
-    RemoteControl(Device device) { this.device = device; }
-    void togglePower() { device.setEnabled(!device.isEnabled()); }
-    void volumeUp() { device.setVolume(device.getVolume() + 10); }
-}
-
-// Refined abstraction: extends the control side independently of devices
-class AdvancedRemote extends RemoteControl {
-    AdvancedRemote(Device device) { super(device); }
-    void mute() { device.setVolume(0); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        new RemoteControl(new Tv()).volumeUp();
-        AdvancedRemote remote = new AdvancedRemote(new Radio());
-        remote.togglePower();
-        remote.mute();
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -1699,7 +1219,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "java.util.Comparator passed to Collections.sort is a strategy. Parking lots switching between hourly, flat and weekend pricing, or ride-sharing apps choosing a fare or matching algorithm, are classic uses.",
+      "The key= function passed to sorted() is a strategy. Parking lots switching between hourly, flat and weekend pricing, or ride-sharing apps choosing a fare or matching algorithm, are classic uses.",
     advantages: [
       "Swap algorithms at runtime without changing the context.",
       "Eliminates conditional logic for selecting behaviour.",
@@ -1712,49 +1232,6 @@ if __name__ == "__main__":
       "Strategies may need data from the context, which can widen interfaces.",
     ],
     code: {
-      java: `interface PricingStrategy {
-    double calculate(int hours);
-}
-
-class HourlyPricing implements PricingStrategy {
-    private final double rate;
-    HourlyPricing(double rate) { this.rate = rate; }
-    public double calculate(int hours) { return hours * rate; }
-}
-
-class FlatRatePricing implements PricingStrategy {
-    private final double flat;
-    FlatRatePricing(double flat) { this.flat = flat; }
-    public double calculate(int hours) { return flat; }
-}
-
-class TieredPricing implements PricingStrategy {
-    public double calculate(int hours) {
-        // first 2 hours at 5.0, every extra hour at 3.0
-        return Math.min(hours, 2) * 5.0 + Math.max(0, hours - 2) * 3.0;
-    }
-}
-
-// Context: delegates the varying algorithm to a strategy object
-class ParkingFeeCalculator {
-    private PricingStrategy strategy;
-    ParkingFeeCalculator(PricingStrategy strategy) { this.strategy = strategy; }
-    void setStrategy(PricingStrategy strategy) { this.strategy = strategy; }
-    double fee(int hours) { return strategy.calculate(hours); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        ParkingFeeCalculator calc = new ParkingFeeCalculator(new HourlyPricing(4.0));
-        System.out.println("Hourly: " + calc.fee(5));
-
-        calc.setStrategy(new TieredPricing());
-        System.out.println("Tiered: " + calc.fee(5));
-
-        calc.setStrategy(new FlatRatePricing(15.0));
-        System.out.println("Flat:   " + calc.fee(5));
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -1850,7 +1327,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "GUI event listeners (addActionListener in Swing, addEventListener in the DOM) and reactive libraries like RxJava are built on Observer. An order-status change fanning out to email, SMS and push notifiers is a typical LLD use.",
+      "GUI callbacks (Tkinter's bind, addEventListener in the DOM), Django signals and reactive libraries like RxPY are built on Observer. An order-status change fanning out to email, SMS and push notifiers is a typical LLD use.",
     advantages: [
       "Loose coupling: the subject knows only the observer interface.",
       "New observers can be added without changing the subject (Open/Closed).",
@@ -1864,58 +1341,6 @@ if __name__ == "__main__":
       "Synchronous notification means one slow observer blocks the rest.",
     ],
     code: {
-      java: `import java.util.ArrayList;
-import java.util.List;
-
-interface Observer {
-    void update(String orderId, String status);
-}
-
-interface Subject {
-    void subscribe(Observer o);
-    void unsubscribe(Observer o);
-    void notifyObservers();
-}
-
-class OrderTracker implements Subject {
-    private final List<Observer> observers = new ArrayList<>();
-    private final String orderId;
-    private String status = "CREATED";
-
-    OrderTracker(String orderId) { this.orderId = orderId; }
-
-    public void subscribe(Observer o) { observers.add(o); }
-    public void unsubscribe(Observer o) { observers.remove(o); }
-    public void notifyObservers() {
-        for (Observer o : List.copyOf(observers)) o.update(orderId, status);
-    }
-
-    void setStatus(String status) {
-        this.status = status;
-        notifyObservers();                     // push the change to every subscriber
-    }
-}
-
-class EmailNotifier implements Observer {
-    public void update(String id, String status) { System.out.println("Email: order " + id + " is " + status); }
-}
-
-class SmsNotifier implements Observer {
-    public void update(String id, String status) { System.out.println("SMS: order " + id + " is " + status); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        OrderTracker tracker = new OrderTracker("A-17");
-        Observer sms = new SmsNotifier();
-        tracker.subscribe(new EmailNotifier());
-        tracker.subscribe(sms);
-
-        tracker.setStatus("SHIPPED");          // both notified
-        tracker.unsubscribe(sms);
-        tracker.setStatus("DELIVERED");        // only email notified
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -2010,7 +1435,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "java.lang.Runnable submitted to an ExecutorService is a command, and text editors implement undo/redo by keeping a stack of command objects. Elevator floor requests can be modelled as queued commands.",
+      "A callable submitted to concurrent.futures.ThreadPoolExecutor is a command, and text editors implement undo/redo by keeping a stack of command objects. Elevator floor requests can be modelled as queued commands.",
     advantages: [
       "Decouples the object that invokes an operation from the one that performs it.",
       "Enables undo/redo, queuing, scheduling and logging of operations.",
@@ -2023,54 +1448,6 @@ if __name__ == "__main__":
       "Indirection can make the control flow harder to follow.",
     ],
     code: {
-      java: `import java.util.ArrayDeque;
-import java.util.Deque;
-
-interface Command {
-    void execute();
-    void undo();
-}
-
-// Receiver: knows how to do the actual work
-class Light {
-    private final String room;
-    Light(String room) { this.room = room; }
-    void on() { System.out.println(room + " light ON"); }
-    void off() { System.out.println(room + " light OFF"); }
-}
-
-class LightOnCommand implements Command {
-    private final Light light;
-    LightOnCommand(Light light) { this.light = light; }
-    public void execute() { light.on(); }
-    public void undo() { light.off(); }
-}
-
-class LightOffCommand implements Command {
-    private final Light light;
-    LightOffCommand(Light light) { this.light = light; }
-    public void execute() { light.off(); }
-    public void undo() { light.on(); }
-}
-
-// Invoker: triggers commands and keeps a history for undo
-class RemoteControl {
-    private final Deque<Command> history = new ArrayDeque<>();
-
-    void press(Command c) { c.execute(); history.push(c); }
-    void undoLast() { if (!history.isEmpty()) history.pop().undo(); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        Light kitchen = new Light("Kitchen");
-        RemoteControl remote = new RemoteControl();
-        remote.press(new LightOnCommand(kitchen));
-        remote.press(new LightOffCommand(kitchen));
-        remote.undoLast();                     // kitchen light ON again
-        remote.undoLast();                     // kitchen light OFF
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -2202,58 +1579,6 @@ if __name__ == "__main__":
       "Overkill for a handful of simple states.",
     ],
     code: {
-      java: `interface State {
-    void insertCoin(VendingMachine m);
-    void selectItem(VendingMachine m);
-}
-
-class IdleState implements State {
-    public void insertCoin(VendingMachine m) {
-        System.out.println("Coin accepted");
-        m.setState(new HasCoinState());
-    }
-    public void selectItem(VendingMachine m) { System.out.println("Insert a coin first"); }
-}
-
-class HasCoinState implements State {
-    public void insertCoin(VendingMachine m) { System.out.println("Coin already inserted"); }
-    public void selectItem(VendingMachine m) {
-        m.releaseItem();
-        m.setState(m.getStock() > 0 ? new IdleState() : new SoldOutState());
-    }
-}
-
-class SoldOutState implements State {
-    public void insertCoin(VendingMachine m) { System.out.println("Sold out, coin returned"); }
-    public void selectItem(VendingMachine m) { System.out.println("Sold out"); }
-}
-
-// Context: delegates behaviour to its current state object
-class VendingMachine {
-    private State state;
-    private int stock;
-
-    VendingMachine(int stock) {
-        this.stock = stock;
-        this.state = stock > 0 ? new IdleState() : new SoldOutState();
-    }
-    void setState(State s) { this.state = s; }
-    int getStock() { return stock; }
-    void releaseItem() { stock--; System.out.println("Item dispensed, " + stock + " left"); }
-
-    void insertCoin() { state.insertCoin(this); }
-    void selectItem() { state.selectItem(this); }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        VendingMachine vm = new VendingMachine(1);
-        vm.selectItem();   // Insert a coin first
-        vm.insertCoin();   // Coin accepted
-        vm.selectItem();   // Item dispensed, 0 left
-        vm.insertCoin();   // Sold out, coin returned
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -2365,7 +1690,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "Servlet filters and Express or Spring middleware form a chain of responsibility, as do logging frameworks that pass a record from DEBUG to INFO to ERROR handlers. An ATM dispensing 100s, then 50s, then 20s is a classic exercise.",
+      "Django and WSGI middleware form a chain of responsibility, as do logging frameworks that pass a record from DEBUG to INFO to ERROR handlers. An ATM dispensing 100s, then 50s, then 20s is a classic exercise.",
     advantages: [
       "Decouples the sender from concrete handlers.",
       "Handlers can be added, removed or reordered without changing others (Open/Closed).",
@@ -2377,59 +1702,6 @@ if __name__ == "__main__":
       "Long chains add latency, and misconfigured chains can create cycles.",
     ],
     code: {
-      java: `import java.util.HashMap;
-import java.util.Map;
-
-record Request(String user, String token, String payload) { }
-
-abstract class Handler {
-    private Handler next;
-
-    Handler setNext(Handler next) { this.next = next; return next; }   // enables fluent chaining
-
-    boolean handle(Request req) {
-        return next == null || next.handle(req);   // end of chain means success
-    }
-}
-
-class AuthHandler extends Handler {
-    boolean handle(Request req) {
-        if (!"secret".equals(req.token())) { System.out.println("401 Unauthorized"); return false; }
-        return super.handle(req);
-    }
-}
-
-class RateLimitHandler extends Handler {
-    private final Map<String, Integer> counts = new HashMap<>();
-    private final int limit;
-    RateLimitHandler(int limit) { this.limit = limit; }
-
-    boolean handle(Request req) {
-        int n = counts.merge(req.user(), 1, Integer::sum);
-        if (n > limit) { System.out.println("429 Too Many Requests"); return false; }
-        return super.handle(req);
-    }
-}
-
-class ValidationHandler extends Handler {
-    boolean handle(Request req) {
-        if (req.payload() == null || req.payload().isBlank()) { System.out.println("400 Bad Request"); return false; }
-        System.out.println("200 OK: " + req.payload());
-        return super.handle(req);
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        Handler chain = new AuthHandler();
-        chain.setNext(new RateLimitHandler(2)).setNext(new ValidationHandler());
-
-        chain.handle(new Request("alice", "bad", "x"));         // 401
-        chain.handle(new Request("alice", "secret", "order-1")); // 200
-        chain.handle(new Request("alice", "secret", ""));        // 400
-        chain.handle(new Request("alice", "secret", "order-2")); // 429
-    }
-}`,
       python: `from collections import defaultdict
 from dataclasses import dataclass
 
@@ -2540,7 +1812,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "java.util.AbstractList implements most List methods on top of abstract get() and size(), and JUnit's setUp/test/tearDown lifecycle is a template method. Board games share a play-turn loop with game-specific move rules.",
+      "collections.abc.Sequence implements most list methods on top of your __getitem__() and __len__(), and unittest.TestCase's setUp/test/tearDown lifecycle is a template method. Board games share a play-turn loop with game-specific move rules.",
     advantages: [
       "Removes duplication by placing invariant steps in one place.",
       "Enforces a consistent algorithm structure.",
@@ -2553,45 +1825,6 @@ if __name__ == "__main__":
       "Following control flow between base and subclass can be confusing (the Hollywood principle).",
     ],
     code: {
-      java: `import java.util.List;
-
-abstract class ReportGenerator {
-    // Template method: fixed skeleton, final so subclasses cannot reorder the steps
-    public final String generate() {
-        StringBuilder out = new StringBuilder(header());
-        for (String[] row : fetchData()) out.append(formatRow(row));
-        out.append(footer());
-        return out.toString();
-    }
-
-    protected List<String[]> fetchData() {           // shared step
-        return List.of(new String[] {"Alice", "42"}, new String[] {"Bob", "17"});
-    }
-
-    protected abstract String header();              // required steps
-    protected abstract String formatRow(String[] row);
-
-    protected String footer() { return ""; }         // hook: optional override
-}
-
-class CsvReport extends ReportGenerator {
-    private static final String NL = System.lineSeparator();
-    protected String header() { return "name,score" + NL; }
-    protected String formatRow(String[] r) { return r[0] + "," + r[1] + NL; }
-}
-
-class HtmlReport extends ReportGenerator {
-    protected String header() { return "<table><tr><th>name</th><th>score</th></tr>"; }
-    protected String formatRow(String[] r) { return "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>"; }
-    protected String footer() { return "</table>"; }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        System.out.println(new CsvReport().generate());
-        System.out.println(new HtmlReport().generate());
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 
@@ -2686,7 +1919,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "java.util.Iterator with Iterable powers Java's for-each loop, and Python's __iter__/__next__ protocol (and generators) is the same pattern built into the language.",
+      "Python's for loop is built on it: __iter__ returns an iterator and __next__ yields items until StopIteration. Generators are the shortest way to write one.",
     advantages: [
       "Hides the collection's internal structure (encapsulation).",
       "Supports multiple traversal algorithms and simultaneous traversals.",
@@ -2699,51 +1932,6 @@ if __name__ == "__main__":
       "Modifying the collection during iteration needs explicit handling (fail-fast checks).",
     ],
     code: {
-      java: `import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-
-class Playlist implements Iterable<String> {
-    private final List<String> songs = new ArrayList<>();
-
-    void add(String song) { songs.add(song); }
-
-    public Iterator<String> iterator() { return new ForwardIterator(); }   // enables for-each
-    Iterator<String> reverseIterator() { return new ReverseIterator(); }
-
-    private class ForwardIterator implements Iterator<String> {
-        private int index = 0;
-        public boolean hasNext() { return index < songs.size(); }
-        public String next() {
-            if (!hasNext()) throw new NoSuchElementException();
-            return songs.get(index++);
-        }
-    }
-
-    private class ReverseIterator implements Iterator<String> {
-        private int index = songs.size() - 1;
-        public boolean hasNext() { return index >= 0; }
-        public String next() {
-            if (!hasNext()) throw new NoSuchElementException();
-            return songs.get(index--);
-        }
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        Playlist playlist = new Playlist();
-        playlist.add("Intro");
-        playlist.add("Verse");
-        playlist.add("Outro");
-
-        for (String song : playlist) System.out.println("Play " + song);
-
-        Iterator<String> it = playlist.reverseIterator();
-        while (it.hasNext()) System.out.println("Rewind " + it.next());
-    }
-}`,
       python: `from collections.abc import Iterator
 
 
@@ -2846,7 +2034,7 @@ if __name__ == "__main__":
       ],
     },
     example:
-      "An air-traffic control tower coordinates planes so they never negotiate with each other directly. java.util.concurrent.Executor and MVC controllers coordinating views also act as mediators.",
+      "An air-traffic control tower coordinates planes so they never negotiate with each other directly. asyncio's event loop and MVC controllers coordinating views also act as mediators.",
     advantages: [
       "Reduces many-to-many coupling to one-to-many.",
       "Centralises interaction logic, making it easier to understand and change.",
@@ -2858,57 +2046,6 @@ if __name__ == "__main__":
       "Moves complexity rather than eliminating it.",
     ],
     code: {
-      java: `import java.util.ArrayList;
-import java.util.List;
-
-interface ChatMediator {
-    void join(User user);
-    void send(String message, User sender);
-}
-
-class ChatRoom implements ChatMediator {
-    private final List<User> members = new ArrayList<>();
-
-    public void join(User user) { members.add(user); }
-
-    public void send(String message, User sender) {
-        // Routing logic lives here, not inside the users
-        for (User u : members) {
-            if (u != sender) u.receive(message, sender.getName());
-        }
-    }
-}
-
-class User {
-    private final String name;
-    private final ChatMediator mediator;
-
-    User(String name, ChatMediator mediator) {
-        this.name = name;
-        this.mediator = mediator;
-    }
-
-    String getName() { return name; }
-    void send(String message) { mediator.send(message, this); }   // talks only to the mediator
-    void receive(String message, String from) {
-        System.out.println(name + " got from " + from + ": " + message);
-    }
-}
-
-public class Main {
-    public static void main(String[] args) {
-        ChatMediator room = new ChatRoom();
-        User alice = new User("Alice", room);
-        User bob = new User("Bob", room);
-        User carol = new User("Carol", room);
-        room.join(alice);
-        room.join(bob);
-        room.join(carol);
-
-        alice.send("Hi all");
-        bob.send("Hey Alice");
-    }
-}`,
       python: `from abc import ABC, abstractmethod
 
 

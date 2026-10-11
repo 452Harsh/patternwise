@@ -36,7 +36,7 @@ export const LLD_CONCEPTS: SDConcept[] = [
       "Domain entities in LLD problems like Account, ParkingSpot, or Order",
     ],
     howItWorks: [
-      "Make fields private (or otherwise non-public)",
+      "Keep fields non-public (a leading underscore in Python) and expose read-only views with @property",
       "Expose behavior-oriented methods (deposit, withdraw) rather than raw setters",
       "Validate inputs inside those methods to enforce invariants",
       "Return copies or read-only views of internal collections",
@@ -56,33 +56,35 @@ export const LLD_CONCEPTS: SDConcept[] = [
       "How is encapsulation different from abstraction?",
       "Why are public setters for every field considered a code smell?",
       "How would you prevent callers from mutating a list returned by a getter?",
-      "Does encapsulation matter in languages without access modifiers, like Python?",
+      "Python has no access modifiers: how do _name, __name and @property give you encapsulation anyway?",
     ],
     related: ["abstraction", "high-cohesion", "class-design", "low-coupling"],
     example: {
-      language: "java",
-      code: `public class BankAccount {
-    private long balanceCents;           // hidden state
-    private final List<String> history = new ArrayList<>();
+      language: "python",
+      code: `class BankAccount:
+    def __init__(self) -> None:
+        self._balance_cents = 0              # hidden state (by convention)
+        self._history: list[str] = []
 
-    public void deposit(long cents) {
-        if (cents <= 0) throw new IllegalArgumentException("must be positive");
-        balanceCents += cents;
-        history.add("deposit " + cents);
-    }
+    def deposit(self, cents: int) -> None:
+        if cents <= 0:
+            raise ValueError("must be positive")
+        self._balance_cents += cents
+        self._history.append(f"deposit {cents}")
 
-    public void withdraw(long cents) {
-        if (cents > balanceCents) throw new IllegalStateException("insufficient funds");
-        balanceCents -= cents;
-        history.add("withdraw " + cents);
-    }
+    def withdraw(self, cents: int) -> None:
+        if cents > self._balance_cents:
+            raise ValueError("insufficient funds")
+        self._balance_cents -= cents
+        self._history.append(f"withdraw {cents}")
 
-    public long getBalance() { return balanceCents; }
+    @property
+    def balance(self) -> int:               # read-only from outside
+        return self._balance_cents
 
-    public List<String> getHistory() {
-        return Collections.unmodifiableList(history); // no leaking mutable state
-    }
-}`,
+    @property
+    def history(self) -> tuple[str, ...]:
+        return tuple(self._history)          # no leaking mutable state`,
     },
   },
   {
@@ -100,7 +102,7 @@ export const LLD_CONCEPTS: SDConcept[] = [
     ],
     howItWorks: [
       "Identify the behavior clients actually need",
-      "Define an interface or abstract class describing that behavior",
+      "Define an abstract base class (abc.ABC) or a typing.Protocol describing that behavior",
       "Provide concrete implementations that hide the details",
       "Make clients depend on the abstraction, not the concrete type",
     ],
@@ -116,35 +118,36 @@ export const LLD_CONCEPTS: SDConcept[] = [
     ],
     interviewQuestions: [
       "What is the difference between abstraction and encapsulation?",
-      "When would you choose an abstract class over an interface?",
+      "When would you choose an ABC over a typing.Protocol?",
       "What is a leaky abstraction? Give an example.",
       "How do you decide the right level of abstraction for a module?",
     ],
     related: ["encapsulation", "interface-design", "dependency-inversion", "polymorphism"],
     example: {
-      language: "java",
-      code: `// Clients only know "a notifier can send a message"
-public interface Notifier {
-    void send(String userId, String message);
-}
+      language: "python",
+      code: `from abc import ABC, abstractmethod
 
-public class EmailNotifier implements Notifier {
-    public void send(String userId, String message) {
-        String email = lookupEmail(userId);   // SMTP details hidden
-        smtpClient.send(email, message);
-    }
-}
 
-public class SmsNotifier implements Notifier {
-    public void send(String userId, String message) {
-        smsGateway.post(lookupPhone(userId), message);
-    }
-}
+# Clients only know "a notifier can send a message"
+class Notifier(ABC):
+    @abstractmethod
+    def send(self, user_id: str, message: str) -> None: ...
 
-// Caller code is unaware of SMTP or SMS gateways
-void alert(Notifier notifier, String userId) {
-    notifier.send(userId, "Your order has shipped");
-}`,
+
+class EmailNotifier(Notifier):
+    def send(self, user_id: str, message: str) -> None:
+        email = lookup_email(user_id)        # SMTP details hidden
+        smtp_client.send(email, message)
+
+
+class SmsNotifier(Notifier):
+    def send(self, user_id: str, message: str) -> None:
+        sms_gateway.post(lookup_phone(user_id), message)
+
+
+# Caller code is unaware of SMTP or SMS gateways
+def alert(notifier: Notifier, user_id: str) -> None:
+    notifier.send(user_id, "Your order has shipped")`,
     },
   },
   {
@@ -174,38 +177,39 @@ void alert(Notifier notifier, String userId) {
       "Tight coupling between parent and child (fragile base class problem)",
       "Deep hierarchies are hard to understand and change",
       "Subclasses can violate parent contracts, breaking LSP",
-      "Single inheritance in Java limits flexibility",
+      "Multiple inheritance in Python is allowed but easy to misuse; the MRO gets hard to reason about",
     ],
     interviewQuestions: [
       "What is the fragile base class problem?",
       "When is inheritance the right choice over composition?",
-      "Why does Java not support multiple inheritance of classes?",
+      "How does Python's method resolution order (MRO) resolve the diamond problem?",
       "Is Square extends Rectangle a good design? Why or why not?",
     ],
     related: ["polymorphism", "composition-over-inheritance", "liskov-substitution", "composition"],
     example: {
-      language: "java",
-      code: `public abstract class Vehicle {
-    protected final String plate;
+      language: "python",
+      code: `from abc import ABC, abstractmethod
 
-    protected Vehicle(String plate) { this.plate = plate; }
 
-    public abstract int wheels();
+class Vehicle(ABC):
+    def __init__(self, plate: str) -> None:
+        self.plate = plate
 
-    public String describe() {
-        return getClass().getSimpleName() + " " + plate + " with " + wheels() + " wheels";
-    }
-}
+    @abstractmethod
+    def wheels(self) -> int: ...
 
-public class Car extends Vehicle {
-    public Car(String plate) { super(plate); }
-    public int wheels() { return 4; }
-}
+    def describe(self) -> str:
+        return f"{type(self).__name__} {self.plate} with {self.wheels()} wheels"
 
-public class Motorcycle extends Vehicle {
-    public Motorcycle(String plate) { super(plate); }
-    public int wheels() { return 2; }
-}`,
+
+class Car(Vehicle):
+    def wheels(self) -> int:
+        return 4
+
+
+class Motorcycle(Vehicle):
+    def wheels(self) -> int:
+        return 2`,
     },
   },
   {
@@ -238,7 +242,7 @@ public class Motorcycle extends Vehicle {
     ],
     interviewQuestions: [
       "Explain compile-time vs runtime polymorphism.",
-      "How does dynamic dispatch work in Java?",
+      "How does Python decide which method to call at runtime (duck typing and the MRO)?",
       "Refactor a switch on vehicle type to use polymorphism.",
       "Can static methods be overridden? Why not?",
     ],
@@ -304,30 +308,30 @@ total = sum(s.area() for s in shapes)`,
     ],
     related: ["aggregation", "association", "composition-over-inheritance", "uml-class-diagrams"],
     example: {
-      language: "java",
-      code: `public class Order {
-    // Order owns its lines; lines do not exist outside an order
-    private final List<OrderLine> lines = new ArrayList<>();
+      language: "python",
+      code: `from dataclasses import dataclass
 
-    public void addItem(String sku, int qty, long priceCents) {
-        lines.add(new OrderLine(sku, qty, priceCents)); // created by the owner
-    }
 
-    public long total() {
-        return lines.stream().mapToLong(OrderLine::subtotal).sum();
-    }
+@dataclass(frozen=True)
+class _OrderLine:                            # private to the order
+    sku: str
+    qty: int
+    price_cents: int
 
-    private static final class OrderLine {
-        private final String sku;
-        private final int qty;
-        private final long priceCents;
+    def subtotal(self) -> int:
+        return self.qty * self.price_cents
 
-        OrderLine(String sku, int qty, long priceCents) {
-            this.sku = sku; this.qty = qty; this.priceCents = priceCents;
-        }
-        long subtotal() { return qty * priceCents; }
-    }
-}`,
+
+class Order:
+    # Order owns its lines; lines do not exist outside an order
+    def __init__(self) -> None:
+        self._lines: list[_OrderLine] = []
+
+    def add_item(self, sku: str, qty: int, price_cents: int) -> None:
+        self._lines.append(_OrderLine(sku, qty, price_cents))  # created by the owner
+
+    def total(self) -> int:
+        return sum(line.subtotal() for line in self._lines)`,
     },
   },
   {
@@ -365,27 +369,27 @@ total = sum(s.area() for s in shapes)`,
     ],
     related: ["aggregation", "composition", "dependency", "uml-class-diagrams"],
     example: {
-      language: "java",
-      code: `public class Doctor {
-    private final String name;
-    private final Set<Patient> patients = new HashSet<>();
+      language: "python",
+      code: `class Doctor:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self._patients: set["Patient"] = set()
 
-    public Doctor(String name) { this.name = name; }
+    def add_patient(self, p: "Patient") -> None:
+        if p not in self._patients:
+            self._patients.add(p)
+            p._add_doctor(self)              # keep both sides in sync
 
-    public void addPatient(Patient p) {
-        if (patients.add(p)) p.addDoctor(this);  // keep both sides in sync
-    }
-}
 
-public class Patient {
-    private final String name;
-    private final Set<Doctor> doctors = new HashSet<>();
+class Patient:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self._doctors: set[Doctor] = set()
 
-    public Patient(String name) { this.name = name; }
+    def _add_doctor(self, d: Doctor) -> None:
+        self._doctors.add(d)
 
-    void addDoctor(Doctor d) { doctors.add(d); }
-}
-// Many-to-many; each exists independently of the other`,
+# Many-to-many; each exists independently of the other`,
     },
   },
   {
@@ -481,19 +485,16 @@ blue.sign(alice)   # same object, new team; no lifecycle tie`,
     ],
     related: ["association", "dependency-injection", "dependency-inversion", "low-coupling"],
     example: {
-      language: "java",
-      code: `public class InvoicePrinter {
-    // Depends on Invoice and Formatter only for the duration of the call
-    public String print(Invoice invoice, Formatter formatter) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(formatter.header(invoice.getId()));
-        for (LineItem item : invoice.getItems()) {
-            sb.append(formatter.line(item));
-        }
-        return sb.toString();
-    }
-}
-// UML: InvoicePrinter - - -> Invoice, InvoicePrinter - - -> Formatter`,
+      language: "python",
+      code: `class InvoicePrinter:
+    # Depends on Invoice and Formatter only for the duration of the call
+    def print(self, invoice: "Invoice", formatter: "Formatter") -> str:
+        parts = [formatter.header(invoice.id)]
+        for item in invoice.items:
+            parts.append(formatter.line(item))
+        return "".join(parts)
+
+# UML: InvoicePrinter - - -> Invoice, InvoicePrinter - - -> Formatter`,
     },
   },
 
@@ -534,24 +535,25 @@ blue.sign(alice)   # same object, new team; no lifecycle tie`,
     ],
     related: ["high-cohesion", "open-closed", "class-design", "low-coupling"],
     example: {
-      language: "java",
-      code: `// Before: one class handles calculation, persistence, and formatting
-class ReportBad {
-    double calculateTotal() { /* ... */ return 0; }
-    void saveToDb() { /* ... */ }
-    String toHtml() { /* ... */ return ""; }
-}
+      language: "python",
+      code: `# Before: one class handles calculation, persistence, and formatting
+class ReportBad:
+    def calculate_total(self) -> float: ...
+    def save_to_db(self) -> None: ...
+    def to_html(self) -> str: ...
 
-// After: each class has a single reason to change
-class ReportCalculator {
-    double total(Report r) { /* business rules */ return 0; }
-}
-class ReportRepository {
-    void save(Report r) { /* persistence */ }
-}
-class HtmlReportFormatter {
-    String format(Report r) { /* presentation */ return ""; }
-}`,
+
+# After: each class has a single reason to change
+class ReportCalculator:
+    def total(self, report: "Report") -> float: ...      # business rules
+
+
+class ReportRepository:
+    def save(self, report: "Report") -> None: ...        # persistence
+
+
+class HtmlReportFormatter:
+    def format(self, report: "Report") -> str: ...       # presentation`,
     },
   },
   {
@@ -589,25 +591,34 @@ class HtmlReportFormatter {
     ],
     related: ["polymorphism", "single-responsibility", "dependency-inversion", "interface-design", "yagni"],
     example: {
-      language: "java",
-      code: `// Before: every new type means editing this method
-// double discount(String type) { switch (type) { case "VIP": ... } }
+      language: "python",
+      code: `from typing import Protocol
 
-// After: add a new DiscountPolicy class; calculator never changes
-interface DiscountPolicy {
-    double apply(double amount);
-}
-class NoDiscount implements DiscountPolicy {
-    public double apply(double a) { return a; }
-}
-class VipDiscount implements DiscountPolicy {
-    public double apply(double a) { return a * 0.8; }
-}
-class Checkout {
-    private final DiscountPolicy policy;
-    Checkout(DiscountPolicy policy) { this.policy = policy; }
-    double total(double amount) { return policy.apply(amount); }
-}`,
+# Before: every new type means editing this function
+# def discount(kind): if kind == "VIP": ... elif kind == ...
+
+
+# After: add a new DiscountPolicy class; Checkout never changes
+class DiscountPolicy(Protocol):
+    def apply(self, amount: float) -> float: ...
+
+
+class NoDiscount:
+    def apply(self, amount: float) -> float:
+        return amount
+
+
+class VipDiscount:
+    def apply(self, amount: float) -> float:
+        return amount * 0.8
+
+
+class Checkout:
+    def __init__(self, policy: DiscountPolicy) -> None:
+        self._policy = policy
+
+    def total(self, amount: float) -> float:
+        return self._policy.apply(amount)`,
     },
   },
   {
@@ -646,26 +657,36 @@ class Checkout {
     ],
     related: ["inheritance", "polymorphism", "interface-segregation", "composition-over-inheritance"],
     example: {
-      language: "java",
-      code: `// Violation: Penguin cannot honor Bird.fly()
-// class Bird { void fly() {} }
-// class Penguin extends Bird { void fly() { throw new UnsupportedOperationException(); } }
+      language: "python",
+      code: `from abc import ABC, abstractmethod
 
-// Compliant: only birds that can fly promise to fly
-interface Bird {
-    void eat();
-}
-interface FlyingBird extends Bird {
-    void fly();
-}
-class Sparrow implements FlyingBird {
-    public void eat() { }
-    public void fly() { }
-}
-class Penguin implements Bird {
-    public void eat() { }
-}
-// Any FlyingBird can be substituted safely wherever fly() is called`,
+# Violation: Penguin cannot honour Bird.fly()
+# class Bird:
+#     def fly(self): ...
+# class Penguin(Bird):
+#     def fly(self): raise NotImplementedError
+
+
+# Compliant: only birds that can fly promise to fly
+class Bird(ABC):
+    @abstractmethod
+    def eat(self) -> None: ...
+
+
+class FlyingBird(Bird):
+    @abstractmethod
+    def fly(self) -> None: ...
+
+
+class Sparrow(FlyingBird):
+    def eat(self) -> None: ...
+    def fly(self) -> None: ...
+
+
+class Penguin(Bird):
+    def eat(self) -> None: ...
+
+# Any FlyingBird can be substituted safely wherever fly() is called`,
     },
   },
   {
@@ -703,24 +724,34 @@ class Penguin implements Bird {
     ],
     related: ["interface-design", "liskov-substitution", "single-responsibility", "low-coupling"],
     example: {
-      language: "java",
-      code: `// Before: one fat interface forces stubs
-// interface Machine { void print(Doc d); void scan(Doc d); void fax(Doc d); }
+      language: "python",
+      code: `from typing import Protocol
 
-// After: role interfaces
-interface Printer { void print(Doc d); }
-interface Scanner { void scan(Doc d); }
-interface Fax     { void fax(Doc d); }
+# Before: one fat interface forces stubs
+# class Machine(ABC): print(), scan(), fax() all abstract
 
-class BasicPrinter implements Printer {
-    public void print(Doc d) { /* ... */ }
-}
 
-class OfficeMachine implements Printer, Scanner, Fax {
-    public void print(Doc d) { /* ... */ }
-    public void scan(Doc d)  { /* ... */ }
-    public void fax(Doc d)   { /* ... */ }
-}`,
+# After: role interfaces
+class Printer(Protocol):
+    def print(self, doc: "Doc") -> None: ...
+
+
+class Scanner(Protocol):
+    def scan(self, doc: "Doc") -> None: ...
+
+
+class Fax(Protocol):
+    def fax(self, doc: "Doc") -> None: ...
+
+
+class BasicPrinter:                      # satisfies Printer only
+    def print(self, doc: "Doc") -> None: ...
+
+
+class OfficeMachine:                     # satisfies all three
+    def print(self, doc: "Doc") -> None: ...
+    def scan(self, doc: "Doc") -> None: ...
+    def fax(self, doc: "Doc") -> None: ...`,
     },
   },
   {
@@ -738,7 +769,7 @@ class OfficeMachine implements Printer, Scanner, Fax {
     howItWorks: [
       "Define an interface in terms the high-level module needs (e.g. OrderRepository)",
       "Make the high-level class depend only on that interface",
-      "Implement the interface in a low-level adapter (JdbcOrderRepository)",
+      "Implement the interface in a low-level adapter (SqlOrderRepository)",
       "Wire the concrete implementation at the composition root, typically via DI",
     ],
     pros: [
@@ -759,27 +790,29 @@ class OfficeMachine implements Printer, Scanner, Fax {
     ],
     related: ["dependency-injection", "abstraction", "low-coupling", "open-closed"],
     example: {
-      language: "java",
-      code: `// Abstraction owned by the business layer
-interface OrderRepository {
-    void save(Order order);
-}
+      language: "python",
+      code: `from typing import Protocol
 
-// High-level policy depends only on the abstraction
-class OrderService {
-    private final OrderRepository repo;
-    OrderService(OrderRepository repo) { this.repo = repo; }
 
-    void place(Order order) {
-        order.validate();
-        repo.save(order);
-    }
-}
+# Abstraction owned by the business layer
+class OrderRepository(Protocol):
+    def save(self, order: "Order") -> None: ...
 
-// Low-level detail implements the abstraction
-class JdbcOrderRepository implements OrderRepository {
-    public void save(Order order) { /* SQL insert */ }
-}`,
+
+# High-level policy depends only on the abstraction
+class OrderService:
+    def __init__(self, repo: OrderRepository) -> None:
+        self._repo = repo
+
+    def place(self, order: "Order") -> None:
+        order.validate()
+        self._repo.save(order)
+
+
+# Low-level detail implements the abstraction
+class SqlOrderRepository:
+    def save(self, order: "Order") -> None:
+        ...  # SQL insert`,
     },
   },
   {
@@ -873,19 +906,19 @@ def cart_preview(items):
     ],
     related: ["yagni", "dry", "high-cohesion", "class-design"],
     example: {
-      language: "java",
-      code: `// Over-engineered: factory + strategy just to check even numbers
-// ParityCheckerFactory.create(ParityType.EVEN).check(n);
+      language: "python",
+      code: `# Over-engineered: factory + strategy just to check even numbers
+# ParityCheckerFactory.create(ParityType.EVEN).check(n)
 
-// Simple and clear
-static boolean isEven(int n) {
-    return n % 2 == 0;
-}
 
-// Prefer the standard library over hand-rolled loops
-static int maxOf(List<Integer> xs) {
-    return Collections.max(xs);
-}`,
+# Simple and clear
+def is_even(n: int) -> bool:
+    return n % 2 == 0
+
+
+# Prefer the standard library over hand-rolled loops
+def max_of(xs: list[int]) -> int:
+    return max(xs)`,
     },
   },
   {
@@ -975,26 +1008,31 @@ def export_csv(rows: list[dict], path: str) -> None:
     ],
     related: ["low-coupling", "single-responsibility", "encapsulation", "class-design"],
     example: {
-      language: "java",
-      code: `// Low cohesion: unrelated responsibilities in one bag
-// class Utils { sendEmail(); parseDate(); computeTax(); resizeImage(); }
+      language: "python",
+      code: `# Low cohesion: unrelated responsibilities in one bag
+# class Utils: send_email(), parse_date(), compute_tax(), resize_image()
 
-// High cohesion: everything here is about a ParkingSpot's occupancy
-class ParkingSpot {
-    private final String id;
-    private final SpotSize size;
-    private Vehicle parked;
 
-    ParkingSpot(String id, SpotSize size) { this.id = id; this.size = size; }
+# High cohesion: everything here is about a ParkingSpot's occupancy
+class ParkingSpot:
+    def __init__(self, spot_id: str, size: "SpotSize") -> None:
+        self.id = spot_id
+        self.size = size
+        self._parked: "Vehicle | None" = None
 
-    boolean isFree() { return parked == null; }
-    boolean fits(Vehicle v) { return isFree() && v.size().compareTo(size) <= 0; }
-    void park(Vehicle v) {
-        if (!fits(v)) throw new IllegalStateException("spot unavailable");
-        parked = v;
-    }
-    void vacate() { parked = null; }
-}`,
+    def is_free(self) -> bool:
+        return self._parked is None
+
+    def fits(self, v: "Vehicle") -> bool:
+        return self.is_free() and v.size <= self.size
+
+    def park(self, v: "Vehicle") -> None:
+        if not self.fits(v):
+            raise ValueError("spot unavailable")
+        self._parked = v
+
+    def vacate(self) -> None:
+        self._parked = None`,
     },
   },
   {
@@ -1033,25 +1071,26 @@ class ParkingSpot {
     ],
     related: ["high-cohesion", "dependency-injection", "dependency-inversion", "interface-design"],
     example: {
-      language: "java",
-      code: `// Tight: knows the internals of three classes
-// double fee = ticket.getSpot().getFloor().getRateCard().hourly() * hours;
+      language: "python",
+      code: `from datetime import datetime, timedelta
+from typing import Protocol
 
-// Loose: ask the collaborator, depend on an interface
-interface PricingPolicy {
-    long feeFor(Ticket ticket, Duration parked);
-}
+# Tight: knows the internals of three classes
+# fee = ticket.spot.floor.rate_card.hourly() * hours
 
-class ExitGate {
-    private final PricingPolicy pricing;
 
-    ExitGate(PricingPolicy pricing) { this.pricing = pricing; }
+# Loose: ask the collaborator, depend on an interface
+class PricingPolicy(Protocol):
+    def fee_for(self, ticket: "Ticket", parked: timedelta) -> int: ...
 
-    long checkout(Ticket ticket, Instant exitTime) {
-        Duration parked = Duration.between(ticket.entryTime(), exitTime);
-        return pricing.feeFor(ticket, parked);
-    }
-}`,
+
+class ExitGate:
+    def __init__(self, pricing: PricingPolicy) -> None:
+        self._pricing = pricing
+
+    def checkout(self, ticket: "Ticket", exit_time: datetime) -> int:
+        parked = exit_time - ticket.entry_time
+        return self._pricing.fee_for(ticket, parked)`,
     },
   },
   {
@@ -1068,7 +1107,7 @@ class ExitGate {
     ],
     howItWorks: [
       "Declare dependencies as constructor parameters typed by interfaces",
-      "Store them in final fields",
+      "Store them on the instance and don't reassign them",
       "Construct and wire the object graph at a composition root (main, DI container)",
       "Inject test doubles in tests",
     ],
@@ -1090,28 +1129,29 @@ class ExitGate {
     ],
     related: ["dependency-inversion", "low-coupling", "dependency", "abstraction"],
     example: {
-      language: "java",
-      code: `interface Clock { Instant now(); }
+      language: "python",
+      code: `from datetime import datetime, timedelta, timezone
+from typing import Callable
 
-class TokenService {
-    private final Clock clock;
-    private final Duration ttl;
+Clock = Callable[[], datetime]
 
-    // Dependencies injected via constructor
-    TokenService(Clock clock, Duration ttl) {
-        this.clock = clock;
-        this.ttl = ttl;
-    }
 
-    boolean isExpired(Instant issuedAt) {
-        return clock.now().isAfter(issuedAt.plus(ttl));
-    }
-}
+class TokenService:
+    # Dependencies injected via the constructor
+    def __init__(self, clock: Clock, ttl: timedelta) -> None:
+        self._clock = clock
+        self._ttl = ttl
 
-// Composition root
-TokenService prod = new TokenService(Instant::now, Duration.ofHours(1));
-// Test: fixed clock, deterministic result
-TokenService test = new TokenService(() -> Instant.parse("2024-01-01T02:00:00Z"), Duration.ofHours(1));`,
+    def is_expired(self, issued_at: datetime) -> bool:
+        return self._clock() > issued_at + self._ttl
+
+
+# Composition root
+prod = TokenService(lambda: datetime.now(timezone.utc), timedelta(hours=1))
+
+# Test: fixed clock, deterministic result
+fixed = datetime(2024, 1, 1, 2, tzinfo=timezone.utc)
+test = TokenService(lambda: fixed, timedelta(hours=1))`,
     },
   },
 
@@ -1152,25 +1192,47 @@ TokenService test = new TokenService(() -> Instant.parse("2024-01-01T02:00:00Z")
     ],
     related: ["class-design", "composition", "aggregation", "association", "interface-design"],
     example: {
-      language: "java",
-      code: `// UML (text form) for a parking lot:
-//   ParkingLot  <>------ 1..*  Floor          (composition, filled diamond)
-//   Floor       <>------ 1..*  ParkingSpot    (composition)
-//   ParkingSpot ------- 0..1   Vehicle        (association)
-//   Car --|> Vehicle                          (inheritance)
-//   HourlyPricing ..|> PricingPolicy          (realization)
+      language: "python",
+      code: `# UML (text form) for a parking lot:
+#   ParkingLot  <>------ 1..*  Floor          (composition, filled diamond)
+#   Floor       <>------ 1..*  ParkingSpot    (composition)
+#   ParkingSpot ------- 0..1   Vehicle        (association)
+#   Car --|> Vehicle                          (inheritance)
+#   HourlyPricing ..|> PricingPolicy          (realization)
+from abc import ABC, abstractmethod
 
-abstract class Vehicle { protected String plate; }
-class Car extends Vehicle { }
 
-interface PricingPolicy { long fee(Ticket t); }
-class HourlyPricing implements PricingPolicy {
-    public long fee(Ticket t) { return 0; }
-}
+class Vehicle(ABC):
+    def __init__(self, plate: str) -> None:
+        self.plate = plate
 
-class ParkingSpot { private Vehicle parked; }
-class Floor { private final List<ParkingSpot> spots = new ArrayList<>(); }
-class ParkingLot { private final List<Floor> floors = new ArrayList<>(); }`,
+
+class Car(Vehicle): ...
+
+
+class PricingPolicy(ABC):
+    @abstractmethod
+    def fee(self, ticket: "Ticket") -> int: ...
+
+
+class HourlyPricing(PricingPolicy):
+    def fee(self, ticket: "Ticket") -> int:
+        return 0
+
+
+class ParkingSpot:
+    def __init__(self) -> None:
+        self.parked: Vehicle | None = None
+
+
+class Floor:
+    def __init__(self) -> None:
+        self.spots: list[ParkingSpot] = []
+
+
+class ParkingLot:
+    def __init__(self) -> None:
+        self.floors: list[Floor] = []`,
     },
   },
   {
@@ -1210,32 +1272,39 @@ class ParkingLot { private final List<Floor> floors = new ArrayList<>(); }`,
     ],
     related: ["uml-class-diagrams", "encapsulation", "high-cohesion", "single-responsibility", "interface-design"],
     example: {
-      language: "java",
-      code: `// Value object: immutable, equality by value
-record Money(long cents, String currency) {
-    Money plus(Money o) {
-        if (!currency.equals(o.currency)) throw new IllegalArgumentException("currency mismatch");
-        return new Money(cents + o.cents, currency);
-    }
-}
+      language: "python",
+      code: `from dataclasses import dataclass
 
-// Entity: has identity and lifecycle, owns its rules
-class Book {
-    private final String isbn;
-    private boolean onLoan;
 
-    Book(String isbn) { this.isbn = isbn; }
+# Value object: immutable, equality by value
+@dataclass(frozen=True)
+class Money:
+    cents: int
+    currency: str
 
-    void checkout() {
-        if (onLoan) throw new IllegalStateException("already on loan");
-        onLoan = true;
-    }
-}
+    def plus(self, other: "Money") -> "Money":
+        if self.currency != other.currency:
+            raise ValueError("currency mismatch")
+        return Money(self.cents + other.cents, self.currency)
 
-// Service: stateless coordination across entities
-class LoanService {
-    void lend(Book book, Member member) { book.checkout(); member.addLoan(book); }
-}`,
+
+# Entity: has identity and lifecycle, owns its rules
+class Book:
+    def __init__(self, isbn: str) -> None:
+        self.isbn = isbn
+        self._on_loan = False
+
+    def checkout(self) -> None:
+        if self._on_loan:
+            raise ValueError("already on loan")
+        self._on_loan = True
+
+
+# Service: stateless coordination across entities
+class LoanService:
+    def lend(self, book: Book, member: "Member") -> None:
+        book.checkout()
+        member.add_loan(book)`,
     },
   },
   {
@@ -1268,29 +1337,49 @@ class LoanService {
     ],
     interviewQuestions: [
       "Design the interface for a pluggable payment processor.",
-      "Interface vs abstract class: when do you pick each?",
-      "How do default methods in Java interfaces affect design?",
+      "ABC vs typing.Protocol: when do you pick each?",
+      "What changes when an ABC provides concrete default methods alongside abstract ones?",
     ],
     related: ["interface-segregation", "abstraction", "dependency-inversion", "polymorphism"],
     example: {
-      language: "java",
-      code: `// Role-named, minimal, uses domain types, explicit outcomes
-public interface PaymentProcessor {
-    PaymentResult charge(PaymentRequest request);
-    RefundResult refund(String paymentId, Money amount);
-}
+      language: "python",
+      code: `from dataclasses import dataclass
+from typing import Protocol
 
-public record PaymentRequest(String orderId, Money amount, String idempotencyKey) { }
 
-public sealed interface PaymentResult permits Approved, Declined { }
-public record Approved(String paymentId) implements PaymentResult { }
-public record Declined(String reason) implements PaymentResult { }
+@dataclass(frozen=True)
+class PaymentRequest:
+    order_id: str
+    amount: "Money"
+    idempotency_key: str
 
-// Implementations hide vendor SDKs behind the contract
-public class CardProcessor implements PaymentProcessor {
-    public PaymentResult charge(PaymentRequest r) { /* vendor call */ return new Approved("p1"); }
-    public RefundResult refund(String id, Money amt) { /* ... */ return null; }
-}`,
+
+# Explicit outcomes instead of exceptions or magic values
+@dataclass(frozen=True)
+class Approved:
+    payment_id: str
+
+
+@dataclass(frozen=True)
+class Declined:
+    reason: str
+
+
+PaymentResult = Approved | Declined
+
+
+# Role-named, minimal, uses domain types
+class PaymentProcessor(Protocol):
+    def charge(self, request: PaymentRequest) -> PaymentResult: ...
+    def refund(self, payment_id: str, amount: "Money") -> "RefundResult": ...
+
+
+# Implementations hide vendor SDKs behind the contract
+class CardProcessor:
+    def charge(self, request: PaymentRequest) -> PaymentResult:
+        return Approved("p1")        # vendor call
+
+    def refund(self, payment_id: str, amount: "Money") -> "RefundResult": ...`,
     },
   },
   {
@@ -1331,27 +1420,48 @@ public class CardProcessor implements PaymentProcessor {
     ],
     related: ["composition", "inheritance", "liskov-substitution", "polymorphism", "low-coupling"],
     example: {
-      language: "java",
-      code: `// Instead of RubberDuck, WoodenDuck, RobotFlyingDuck subclasses...
-interface FlyBehavior   { String fly(); }
-interface QuackBehavior { String quack(); }
+      language: "python",
+      code: `from typing import Protocol
 
-class FlyWithWings implements FlyBehavior { public String fly() { return "flap"; } }
-class NoFly        implements FlyBehavior { public String fly() { return "..."; } }
-class Squeak       implements QuackBehavior { public String quack() { return "squeak"; } }
+# Instead of RubberDuck, WoodenDuck, RobotFlyingDuck subclasses...
 
-class Duck {
-    private FlyBehavior fly;
-    private final QuackBehavior quack;
 
-    Duck(FlyBehavior fly, QuackBehavior quack) { this.fly = fly; this.quack = quack; }
+class FlyBehavior(Protocol):
+    def fly(self) -> str: ...
 
-    String performFly()   { return fly.fly(); }      // delegate
-    String performQuack() { return quack.quack(); }
-    void setFly(FlyBehavior f) { this.fly = f; }     // change at runtime
-}
 
-Duck rubber = new Duck(new NoFly(), new Squeak());`,
+class QuackBehavior(Protocol):
+    def quack(self) -> str: ...
+
+
+class FlyWithWings:
+    def fly(self) -> str:
+        return "flap"
+
+
+class NoFly:
+    def fly(self) -> str:
+        return "..."
+
+
+class Squeak:
+    def quack(self) -> str:
+        return "squeak"
+
+
+class Duck:
+    def __init__(self, fly: FlyBehavior, quack: QuackBehavior) -> None:
+        self.fly_behavior = fly              # can change at runtime
+        self._quack = quack
+
+    def perform_fly(self) -> str:
+        return self.fly_behavior.fly()       # delegate
+
+    def perform_quack(self) -> str:
+        return self._quack.quack()
+
+
+rubber = Duck(NoFly(), Squeak())`,
     },
   },
 ];

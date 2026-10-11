@@ -19,8 +19,6 @@ import {
   FileQuestion,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,11 +29,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CodeBlock, LANGUAGES } from "@/components/code-block";
+import { CodeBlock } from "@/components/code-block";
 import { RevisionDialog } from "@/components/revision-dialog";
 import { DifficultyBadge, EmptyState, Panel, Shimmer, StatusBadge, Tag } from "@/components/kit";
-import { NativeSelect } from "@/components/native-select";
 import { IMPORTANT_SET } from "@/data/important";
+import type { Pattern, Problem } from "@/data/types";
 import { useCatalog, useCatalogItem, type CatalogItem } from "@/lib/catalog";
 import { duration } from "@/lib/format";
 import {
@@ -54,14 +52,20 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 const SECTIONS = [
-  ["understanding", "Understanding"],
-  ["recognition", "Pattern"],
-  ["approach", "Approach"],
-  ["complexity", "Complexity"],
-  ["notes", "Notes"],
-  ["mistakes", "Mistakes"],
-  ["solution", "Solution"],
+  ["problem", "Problem"],
+  ["hints", "Hints"],
+  ["solve", "How to solve"],
   ["similar", "Similar"],
+] as const;
+
+/** Input size → the complexity that fits in time (~10⁸ simple operations). */
+const CONSTRAINT_GUIDE = [
+  ["n ≤ 20", "O(2ⁿ) backtracking"],
+  ["n ≤ 500", "O(n³)"],
+  ["n ≤ 5,000", "O(n²)"],
+  ["n ≤ 10⁵–10⁶", "O(n log n) or O(n)"],
+  ["n ≤ 10⁹", "O(log n) or O(1)"],
+  ["Sorted input", "binary search / two pointers"],
 ] as const;
 
 function Section({ id, title, children, hint }: { id: string; title: string; children: React.ReactNode; hint?: string }) {
@@ -78,32 +82,81 @@ function Section({ id, title, children, hint }: { id: string; title: string; chi
   );
 }
 
-function NoteField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  rows = 4,
-  mono,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  rows?: number;
-  mono?: boolean;
-}) {
+/** Collapsed by default so the answer isn't in view while you think. */
+function Reveal({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="sr-only">{label}</span>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={rows}
-        placeholder={placeholder}
-        className={cn("resize-y bg-surface leading-relaxed", mono && "font-mono text-[13px]")}
-      />
-    </label>
+    <details className="group rounded-xl border bg-surface">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium outline-none hover:bg-muted/40 focus-visible:bg-muted">
+        {title}
+        <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="border-t px-4 py-3">{children}</div>
+    </details>
+  );
+}
+
+function PatternHints({ problem, topicName, pattern }: { problem: Problem; topicName: string; pattern: Pattern }) {
+  const hints: { label: string; body: React.ReactNode }[] = [
+    {
+      label: "Which area?",
+      body: (
+        <p>
+          This is a <span className="font-medium text-foreground">{topicName}</span> problem. Which techniques from that area fit the input size?
+        </p>
+      ),
+    },
+    {
+      label: "What to notice in the statement",
+      body: (
+        <ul className="list-disc space-y-1 pl-5">
+          {pattern.signals.map((x) => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+      ),
+    },
+    {
+      label: "The pattern",
+      body: (
+        <p>
+          <span className="font-medium text-foreground">{pattern.name}</span>. {pattern.approach}
+        </p>
+      ),
+    },
+    { label: "Key idea for this problem", body: <p>{problem.takeaway}</p> },
+  ];
+  const [shown, setShown] = useState(0);
+
+  return (
+    <div className="space-y-2">
+      {hints.slice(0, shown).map((h, i) => (
+        <Panel key={h.label} className="flex gap-3 p-4 text-sm leading-relaxed text-muted-foreground">
+          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-warning/15 font-mono text-xs text-warning">{i + 1}</span>
+          <div className="min-w-0 space-y-1">
+            <p className="text-xs font-medium text-foreground">{h.label}</p>
+            {h.body}
+          </div>
+        </Panel>
+      ))}
+      <div className="flex flex-wrap items-center gap-2">
+        {shown < hints.length ? (
+          <>
+            <Button variant="outline" onClick={() => setShown(shown + 1)}>
+              <Lightbulb data-icon="inline-start" /> {shown ? "Next hint" : "Show a hint"} ({shown + 1}/{hints.length})
+            </Button>
+            {shown < hints.length - 1 && (
+              <Button variant="ghost" onClick={() => setShown(hints.length)}>
+                Show all
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button variant="ghost" onClick={() => setShown(0)}>
+            Hide hints
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -161,8 +214,6 @@ function Workspace({ item }: { item: CatalogItem }) {
   const set = (patch: Partial<Entry>) => updateEntry(problem.slug, patch, problem.title);
   const timer = useTimer();
   const [revisionOpen, setRevisionOpen] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(!!e.code);
-  const [editingCode, setEditingCode] = useState(!e.code);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const status = displayStatus(e);
@@ -204,10 +255,6 @@ function Workspace({ item }: { item: CatalogItem }) {
               <span aria-hidden>·</span>
               <Link href={`/topics/${topic.id}`} className="hover:text-foreground">
                 {topic.name}
-              </Link>
-              <span aria-hidden>·</span>
-              <Link href={`/patterns/${pattern.id}`} className="hover:text-foreground">
-                {pattern.name}
               </Link>
               <span aria-hidden>·</span>
               <span className="font-mono text-xs">{platform}</span>
@@ -260,15 +307,11 @@ function Workspace({ item }: { item: CatalogItem }) {
             ))}
           </nav>
 
-          <Section id="understanding" title="Problem understanding">
-            <Panel className="space-y-4 p-4">
-              <div className="flex items-start gap-3">
-                <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
-                <p className="text-sm">
-                  <span className="font-medium">Key idea: </span>
-                  <span className="text-muted-foreground">{problem.takeaway}</span>
-                </p>
-              </div>
+          <Section id="problem" title="Problem">
+            <Panel className="space-y-3 p-4">
+              <p className="text-sm leading-relaxed">
+                Read the statement on {platform} first and note the input size: it tells you which complexity you need.
+              </p>
               {url && (
                 <a
                   href={url}
@@ -276,157 +319,58 @@ function Workspace({ item }: { item: CatalogItem }) {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
                 >
-                  Read the full statement on {platform} <ExternalLink className="size-3.5" aria-hidden />
+                  Open the full statement on {platform} <ExternalLink className="size-3.5" aria-hidden />
                 </a>
               )}
-              <div>
-                <p className="mb-1.5 text-xs text-muted-foreground">
-                  Restate it in your own words: inputs, output, constraints, and what makes it hard.
-                </p>
-                <NoteField
-                  label="Problem in my own words"
-                  value={e.statement}
-                  onChange={(v) => set({ statement: v })}
-                  placeholder="Given … return … such that …  Constraints: n ≤ 10⁵ (so O(n log n) or better)."
-                  rows={3}
-                />
-              </div>
-            </Panel>
-          </Section>
-
-          <Section id="recognition" title="Pattern recognition">
-            <Link
-              href={`/patterns/${pattern.id}`}
-              className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <div className="relative overflow-hidden rounded-xl border border-primary/25 bg-primary/[0.06] p-5 transition-colors hover:border-primary/40">
-                <div className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden />
-                <p className="font-mono text-[11px] uppercase tracking-wider text-primary">Pattern</p>
-                <p className="mt-1 flex items-center gap-1.5 text-lg font-semibold">
-                  {pattern.name} <ArrowUpRight className="size-4 text-muted-foreground" aria-hidden />
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{pattern.approach}</p>
-              </div>
-            </Link>
-            <div className="mt-4">
-              <h3 className="mb-2 text-xs font-medium text-muted-foreground">How to recognise this pattern</h3>
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {pattern.signals.map((s) => (
-                  <li key={s} className="flex gap-2 rounded-lg border bg-surface px-3 py-2 text-sm">
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-                    {s}
+              <ul className="grid grid-cols-1 gap-2 pt-1 text-xs text-muted-foreground sm:grid-cols-3">
+                {CONSTRAINT_GUIDE.map(([n, target]) => (
+                  <li key={n} className="rounded-lg border bg-surface px-3 py-2">
+                    <span className="font-mono text-foreground">{n}</span> → <span className="font-mono">{target}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-          </Section>
-
-          <Section id="approach" title="Approach" hint="Autosaves">
-            <NoteField
-              label="My step-by-step approach"
-              value={e.approach}
-              onChange={(v) => set({ approach: v })}
-              placeholder={"1. What did I notice in the statement?\n2. Which pattern does that point to?\n3. Steps of the algorithm…"}
-              rows={6}
-            />
-            <div className="mt-3">
-              <label htmlFor="insight" className="mb-1.5 block text-xs text-muted-foreground">
-                Key insight (one line you want to remember)
-              </label>
-              <Input id="insight" value={e.insight} onChange={(ev) => set({ insight: ev.target.value })} placeholder="e.g. Shrink only while the window is invalid" />
-            </div>
-          </Section>
-
-          <Section id="complexity" title="Complexity">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {(
-                [
-                  ["time", "Time"],
-                  ["space", "Space"],
-                ] as const
-              ).map(([k, label]) => (
-                <label key={k} className="flex items-center gap-3 rounded-xl border bg-surface px-4 py-3">
-                  <span className="w-12 text-xs text-muted-foreground">{label}</span>
-                  <input
-                    value={e[k]}
-                    onChange={(ev) => set({ [k]: ev.target.value })}
-                    placeholder="O(?)"
-                    className="min-w-0 flex-1 bg-transparent font-mono text-base font-medium outline-none placeholder:text-muted-foreground/50"
-                    aria-label={`${label} complexity`}
-                  />
-                </label>
-              ))}
-            </div>
-          </Section>
-
-          <Section id="notes" title="My notes">
-            <NoteField label="Notes" value={e.notes} onChange={(v) => set({ notes: v })} placeholder="Anything worth remembering: edge cases, alternative approaches, follow-ups." rows={5} />
-          </Section>
-
-          <Section id="mistakes" title="Mistakes">
-            <NoteField
-              label="What did I miss?"
-              value={e.mistakes}
-              onChange={(v) => set({ mistakes: v })}
-              placeholder="What did I miss? Off-by-one? Wrong pattern first? Forgot an edge case?"
-              rows={4}
-            />
-          </Section>
-
-          <Section id="solution" title="Solution">
-            <Panel className="overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setCodeOpen((o) => !o)}
-                aria-expanded={codeOpen}
-                className="flex w-full items-center justify-between px-4 py-3 text-sm outline-none hover:bg-muted/40 focus-visible:bg-muted"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="font-medium">My solution</span>
-                  {e.code ? (
-                    <Tag mono>{LANGUAGES.find((l) => l.value === e.language)?.label ?? e.language}</Tag>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">not added yet</span>
-                  )}
-                </span>
-                <ChevronDown className={cn("size-4 transition-transform", codeOpen && "rotate-180")} aria-hidden />
-              </button>
-              {codeOpen && (
-                <div className="space-y-3 border-t p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <NativeSelect aria-label="Language" value={e.language} onChange={(ev) => set({ language: ev.target.value })}>
-                      {LANGUAGES.map((l) => (
-                        <option key={l.value} value={l.value}>
-                          {l.label}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                    {e.code && (
-                      <Button variant="ghost" size="sm" onClick={() => setEditingCode((v) => !v)}>
-                        {editingCode ? "Preview" : "Edit"}
-                      </Button>
-                    )}
-                  </div>
-                  {editingCode || !e.code ? (
-                    <NoteField label="Solution code" value={e.code} onChange={(v) => set({ code: v })} placeholder="Paste or write your solution…" rows={12} mono />
-                  ) : (
-                    <CodeBlock code={e.code} language={e.language} />
-                  )}
-                </div>
-              )}
             </Panel>
-            {pattern.template && (
-              <details className="group mt-3">
-                <summary className="cursor-pointer list-none text-xs text-muted-foreground hover:text-foreground">
-                  <span className="group-open:hidden">Show</span>
-                  <span className="hidden group-open:inline">Hide</span> the {pattern.name} template
-                </summary>
-                <CodeBlock code={pattern.template} language="python" className="mt-2" />
-              </details>
-            )}
           </Section>
 
-          <Section id="similar" title="Similar problems" hint={`${similar.length} more with ${pattern.name}`}>
+          <Section id="hints" title="Find the pattern" hint="Reveal one hint at a time">
+            <PatternHints key={problem.slug} problem={problem} topicName={topic.name} pattern={pattern} />
+          </Section>
+
+          <Section id="solve" title="How to solve it" hint="Open only once you've tried">
+            <div className="space-y-2">
+              <Reveal title="The technique">
+                <p className="text-sm leading-relaxed text-muted-foreground">{pattern.approach}</p>
+                <Link href={`/patterns/${pattern.id}`} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                  {pattern.name} in the pattern library <ArrowUpRight className="size-3.5" aria-hidden />
+                </Link>
+              </Reveal>
+              {pattern.template && (
+                <Reveal title="Template">
+                  <CodeBlock code={pattern.template} language="python" />
+                </Reveal>
+              )}
+              {pattern.pitfalls.length > 0 && (
+                <Reveal title="Common mistakes with this pattern">
+                  <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+                    {pattern.pitfalls.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
+                  </ul>
+                </Reveal>
+              )}
+              {pattern.variations.length > 0 && (
+                <Reveal title="Variations to be ready for">
+                  <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+                    {pattern.variations.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
+                  </ul>
+                </Reveal>
+              )}
+            </div>
+          </Section>
+
+          <Section id="similar" title="Similar problems" hint={`${similar.length} more with the same pattern`}>
             {similar.length ? (
               <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {similar.map((x) => (

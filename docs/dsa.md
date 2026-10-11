@@ -24,7 +24,7 @@ Custom problems (`state.custom`, slug `custom-…`) are merged with the curated 
 |---|---|---|
 | `/` | `app/(app)/page.tsx` | Dashboard: greeting, daily plan (`DailyPlan tracks={["dsa"]}`), streaks, due count, preparation and readiness, activity |
 | `/problems` | `app/(app)/problems/page.tsx` | Filterable list (status, difficulty, topic, pattern, list, revision state; search; sort). `?add=1` opens `AddProblemDialog` |
-| `/problems/[slug]` | `app/(app)/problems/[slug]/page.tsx` → `components/problem-workspace.tsx` | Problem workspace: problem understanding, pattern recognition, approach, solution code (with syntax highlighting), complexity, mistakes, notes, revision history, similar problems; log attempts with `LogAttemptDialog` |
+| `/problems/[slug]` | `app/(app)/problems/[slug]/page.tsx` → `components/problem-workspace.tsx` | Read-only problem page (nothing to fill in): link to the statement with an input-size → complexity guide, step-by-step pattern hints (area → signals → pattern → key idea), collapsed technique / template / pitfalls / variations, similar problems. The pattern name is hidden until revealed. Mark as solved and Add to revision (with a note) are the only writes. Older `statement` / `approach` / `notes` / `code` fields stay in the data but are no longer shown |
 | `/topics`, `/topics/[topic]` | `components/topic-detail.tsx` | Topic overview and its patterns |
 | `/patterns`, `/patterns/[id]` | `components/pattern-detail.tsx`, `pattern-status.tsx` | Pattern library: signals, approach, template, variations, pitfalls, transfer, complexity, problems, self-rating |
 | `/study-plan` | `app/(app)/study-plan/page.tsx` | Five phases and their progress (`phaseProgress`), today's plan |

@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { ArrowUpRight, CircleMinus, CirclePlus, Lightbulb, Scale } from "lucide-react";
 import { CodeBlock } from "@/components/code-block";
 import { DifficultyBadge, Panel, Tag } from "@/components/kit";
 import { conceptById, findPattern, hldProblemById, lldPatternById, lldProblemById, sdKey } from "@/data/sd";
 import type { HLDPattern, LLDPattern } from "@/data/sd/types";
 import { useStore } from "@/lib/progress";
-import { cn } from "@/lib/utils";
 import { Block, Bullets } from "./concept-detail";
 import { FlowDiagram } from "./flow-diagram";
 import { CompleteButton, SDNotes, SDProgressPanel, SDStatusBadge, TrackTag } from "./sd-kit";
@@ -105,7 +103,6 @@ function HLDBody({ p }: { p: HLDPattern }) {
 }
 
 function LLDBody({ p }: { p: LLDPattern }) {
-  const [lang, setLang] = useState<"java" | "python">("java");
   return (
     <>
       <Block id="problem" title="Problem">
@@ -134,24 +131,7 @@ function LLDBody({ p }: { p: LLDPattern }) {
         <ProsCons pros={p.advantages} cons={p.disadvantages} />
       </Block>
       <Block id="code" title="Code">
-        <div className="mb-2 inline-flex rounded-lg border p-0.5" role="tablist" aria-label="Language">
-          {(["java", "python"] as const).map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="tab"
-              aria-selected={lang === l}
-              onClick={() => setLang(l)}
-              className={cn(
-                "h-7 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                lang === l ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {l === "java" ? "Java" : "Python"}
-            </button>
-          ))}
-        </div>
-        <CodeBlock code={p.code[lang]} language={lang} />
+        <CodeBlock code={p.code.python} language="python" />
       </Block>
       <Block id="related" title="Related patterns">
         <LinkChips items={p.related.map((id) => ({ href: `/system-design/patterns/${id}`, label: lldPatternById.get(id)?.name ?? id }))} />

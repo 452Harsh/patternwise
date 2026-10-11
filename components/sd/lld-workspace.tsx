@@ -12,7 +12,6 @@ import { NativeSelect } from "@/components/native-select";
 import { LLD_PATTERNS, conceptById, lldPatternById } from "@/data/sd";
 import type { LLDProblem, UMLClass, UMLRelation, UMLSpec } from "@/data/sd/types";
 import { blankSD, updateSD, useStore } from "@/lib/progress";
-import { cn } from "@/lib/utils";
 import { UMLDiagram, UMLLegend, type Positions } from "./uml-diagram";
 import { Hints, PromptField, RowsEditor, StringList, WSection, rid } from "./workspace-kit";
 
@@ -81,18 +80,12 @@ export const lldDefaults = (): LLDWorkspaceData => ({
   relationships: [],
   patterns: [],
   umlLayout: {},
-  language: "java",
+  language: "python",
   code: {},
   review: {},
   reviewNotes: "",
 });
 
-const LANGS: { value: CodeLang; label: string }[] = [
-  { value: "java", label: "Java" },
-  { value: "cpp", label: "C++" },
-  { value: "python", label: "Python" },
-  { value: "typescript", label: "TypeScript" },
-];
 
 const RELATIONS: UMLRelation[] = ["inheritance", "realization", "composition", "aggregation", "association", "dependency"];
 
@@ -134,10 +127,11 @@ export function LLDWorkspace({ itemKey, title, problem, customStatement }: { ite
   const entry = useStore().sd[itemKey] ?? blankSD();
   const ws: LLDWorkspaceData = { ...lldDefaults(), ...(entry.workspace as Partial<LLDWorkspaceData> | undefined) };
   const set = (patch: Partial<LLDWorkspaceData>) => updateSD(itemKey, { workspace: { ...ws, ...patch } as unknown as Record<string, unknown> }, title);
-  const [editCode, setEditCode] = useState(!ws.code[ws.language]);
+  const [editCode, setEditCode] = useState(!ws.code.python);
   const spec = toUML(ws);
   const typeNames = spec.classes.map((c) => c.name);
-  const code = ws.code[ws.language] ?? "";
+  // Python only. Code saved earlier in other languages stays in the data but isn't shown.
+  const code = ws.code.python ?? "";
   const reviewed = REVIEW_CHECKLIST.filter((c) => ws.review[c.id]).length;
 
   return (
@@ -321,27 +315,7 @@ export function LLDWorkspace({ itemKey, title, problem, customStatement }: { ite
 
       <WSection id="code" title="Code" step={9}>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex rounded-lg border p-0.5" role="tablist" aria-label="Language">
-            {LANGS.map((l) => (
-              <button
-                key={l.value}
-                type="button"
-                role="tab"
-                aria-selected={ws.language === l.value}
-                onClick={() => {
-                  set({ language: l.value });
-                  setEditCode(!ws.code[l.value]);
-                }}
-                className={cn(
-                  "h-7 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                  ws.language === l.value ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {l.label}
-                {ws.code[l.value] ? <span className="ml-1.5 inline-block size-1.5 rounded-full bg-success align-middle" aria-label="has code" /> : null}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs text-muted-foreground">Python</span>
           {code && (
             <Button variant="ghost" size="sm" onClick={() => setEditCode((v) => !v)}>
               {editCode ? "Preview" : "Edit"}
@@ -351,15 +325,15 @@ export function LLDWorkspace({ itemKey, title, problem, customStatement }: { ite
         {editCode || !code ? (
           <Textarea
             value={code}
-            onChange={(e) => set({ code: { ...ws.code, [ws.language]: e.target.value } })}
+            onChange={(e) => set({ code: { ...ws.code, python: e.target.value } })}
             rows={16}
-            placeholder={`Write your ${LANGS.find((l) => l.value === ws.language)?.label} solution…`}
+            placeholder="Write your Python solution…"
             className="resize-y bg-surface font-mono text-[13px] leading-relaxed"
             aria-label="Solution code"
             spellCheck={false}
           />
         ) : (
-          <CodeBlock code={code} language={ws.language} />
+          <CodeBlock code={code} language="python" />
         )}
       </WSection>
 

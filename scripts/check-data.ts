@@ -71,7 +71,7 @@ for (const p of LLD_PATTERNS) {
   for (const x of p.problems) if (!lldProblemIds.has(x)) errors.push(`LLD pattern ${p.id} → unknown problem ${x}`);
   const names = new Set(p.uml.classes.map((c) => c.name));
   for (const r of p.uml.relations) if (!names.has(r.from) || !names.has(r.to)) errors.push(`LLD pattern ${p.id}: UML relation ${r.from}→${r.to} has no class`);
-  if (!p.code.java.trim() || !p.code.python.trim()) errors.push(`LLD pattern ${p.id} missing code`);
+  if (!p.code.python.trim()) errors.push(`LLD pattern ${p.id} missing code`);
 }
 for (const p of HLD_PROBLEMS) {
   for (const c of p.concepts) if (!conceptIds.has(c)) errors.push(`HLD problem ${p.id} → unknown concept ${c}`);

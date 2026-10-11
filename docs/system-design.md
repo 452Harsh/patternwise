@@ -11,7 +11,7 @@ It is **separate from DSA** in navigation, data and statistics. It shares only t
 | `types.ts` | `SDTrack`, `ComponentType`, `FlowSpec`, `SDCategory`, `SDConcept`, `HLDPattern`, `UMLSpec`/`UMLClass`/`UMLRelation`, `LLDPattern`, `CapacityDefaults`, `HLDProblem`, `LLDProblem` |
 | `ids.ts` | **Canonical id lists**, the single source of truth for cross-references between concepts, patterns and problems |
 | `hld-concepts.ts` / `lld-concepts.ts` | Categories (`HLD_CATEGORY_LIST`, `LLD_CATEGORY_LIST`) and concepts |
-| `hld-patterns.ts` / `lld-patterns.ts` | Architecture patterns with flow diagrams; GoF patterns with UML and Java/Python code |
+| `hld-patterns.ts` / `lld-patterns.ts` | Architecture patterns with flow diagrams; GoF patterns with UML and Python code |
 | `hld-problems.ts` / `lld-problems.ts` | Design problems |
 | `index.ts` | `SD_ITEMS` (a flat catalog of every item), `SD_INDEX`, `sdKey(kind, id)`, `sdHref(key)`, `conceptById`, `hldPatternById`, `lldPatternById`, `hldProblemById`, `lldProblemById`, `findPattern`, `findProblem`, `categoriesFor`, `conceptsIn` |
 | `study-plan.ts` | `SD_PHASES`: Foundations → Building Blocks → Async & Reliability → Patterns → Practice & Interviews |
