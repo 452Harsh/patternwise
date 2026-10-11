@@ -28,22 +28,23 @@ Custom problems (`state.custom`, slug `custom-…`) are merged with the curated 
 | `/topics`, `/topics/[topic]` | `components/topic-detail.tsx` | Topic overview and its patterns |
 | `/patterns`, `/patterns/[id]` | `components/pattern-detail.tsx`, `pattern-status.tsx` | Pattern library: signals, approach, template, variations, pitfalls, transfer, complexity, problems, self-rating |
 | `/study-plan` | `app/(app)/study-plan/page.tsx` | Five phases and their progress (`phaseProgress`), today's plan |
-| `/revision` | `app/(app)/revision/page.tsx` | Queues (Due today, first revision, second revision, previously failed, weak, …) with quick actions Got it / Need more practice / Forgot / Review later |
+| `/revision` | `app/(app)/revision/page.tsx` | Only problems added to revision (`revisit: true`). Queues: Due today, All in revision, Weak, Previously failed, Mastered; quick actions Got it / Need more practice / Forgot / Review later |
 | `/interview` | `app/(app)/interview/page.tsx` | Readiness breakdown, timed practice (`components/timed-practice.tsx`), mock interview log, company lists |
 | `/interview/companies/[id]` | | One company list: notes and problems |
 | `/progress` | `app/(app)/progress/page.tsx` | Tabs via `UrlTabs`: progress, analytics (`?tab=analytics`), coverage (`components/coverage.tsx`) |
 | `/notes` | `components/notes-view.tsx` (`scope="dsa"`) | Every note across problems and patterns, searchable |
+| `/python`, `/python/[lesson]` | `components/python-track.tsx`, content in `data/python/` | Python for C++ developers: roadmap and 12 lessons (STL comparison, complexity, mistakes) with 3 practice questions each. **Deliberately not in the nav or dashboard**; reached by URL only. Question completion is stored in `State.checklist` under `py:<lesson>:<n>` |
 
 ## Progress model
 
-- **Logging an attempt** (`logAttempt(slug, { result, confidence, durationSec?, note?, fresh? })`):
+- **Logging an attempt** (`logAttempt(slug, { result, confidence, durationSec?, note?, fresh?, revise?, reviewInDays? })`):
   - The result is one of `solved`, `hints`, `failed` or `reviewed`.
   - The first success counts as a **solve**; later attempts count as **revisits**.
-  - A failure sets `revisit: true` and schedules the problem for tomorrow.
-  - Otherwise `nextReview = today + reviewInterval(confidence, revisitCount)`.
+  - Revision is opt-in. `revise` (default: the problem's current `revisit` flag) sets `revisit`. Without it, `nextReview` is cleared and the problem is just solved.
+  - When revising, `nextReview = today + reviewInDays`, falling back to 1 day for a failure or `reviewInterval(confidence, revisitCount)`. `LogAttemptDialog` has an "Add to revision" checkbox and a day picker.
   - The status becomes **mastered** at confidence 5 with ≥ 2 revisits. A later low-confidence attempt drops it back to solved.
 - **Quick review** (`quickReview`) maps revision buttons onto `logAttempt`. "Later" only moves `nextReview` to tomorrow.
-- **Derived helpers** (`lib/progress.ts`): `isSolved`, `needsRevisit`, `isDue`, `displayStatus`. Use these instead of comparing `status` strings directly.
+- **Derived helpers** (`lib/progress.ts`): `isSolved`, `needsRevisit` (only `revisit: true`), `isDue` (in revision and `nextReview <= today`), `displayStatus`. Use these instead of comparing `status` strings directly.
 - **Pattern self-rating** (`updatePattern`): `unrated | learning | understood | needs-practice`, plus a note.
 
 ## Metrics (`lib/stats.ts`)

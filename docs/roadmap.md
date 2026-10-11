@@ -25,12 +25,13 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 - [x] Problem list with filters, search, sorting and lists; custom problems (`?add=1`)
 - [x] Problem workspace: own-words statement, approach, code (Prism highlighting incl. Java), complexity, mistakes, notes, history, similar problems
 - [x] Attempt logging (solved / hints / failed / reviewed, confidence, duration, note) and mastery promotion
-- [x] Spaced-repetition revision queues with quick actions
+- [x] Opt-in revision: problems join the queue only via "Add to revision", with a chosen number of days until review; queues with quick actions
 - [x] Pattern library with recognition signals, template, variations, pitfalls, transfer and complexity; pattern self-rating
 - [x] Topics pages, study plan phases, a daily plan with a configurable number of new problems
 - [x] Interview prep: readiness score, timed practice, mock interview log, company lists
 - [x] Progress, analytics (charts, activity calendar, heatmap) and coverage tabs
 - [x] Notes page aggregating all DSA notes
+- [x] Python for C++ developers (`/python`, unlisted): 12 lessons with C++ STL comparisons and 36 practice questions with reference solutions and review checklists
 
 ### System Design module
 - [x] Content: 77 concepts (54 HLD, 23 LLD), 16 HLD architecture patterns, 19 GoF patterns (UML plus Java and Python), 17 HLD and 17 LLD problems
