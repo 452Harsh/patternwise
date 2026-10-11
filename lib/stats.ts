@@ -16,15 +16,11 @@ import {
 
 /* ---------- per-problem score ---------- */
 
-/**
- * 0–1 mastery score for one problem:
- * not started 0 · attempted 0.2 · solved 0.4–1.0 scaled by confidence · mastered 1.
- */
+/** 0–1 score for one problem: not started 0 · attempted 0.2 · solved 1. */
 export function problemScore(e: Entry | undefined): number {
   if (!e || e.status === "todo") return 0;
-  if (e.status === "mastered") return 1;
   if (e.status === "attempted") return 0.2;
-  return 0.4 + 0.12 * (e.understanding || 0);
+  return 1;
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
@@ -80,7 +76,6 @@ export function patternStat(
 
   let reason: string | undefined;
   if (status === "needs-practice") reason = "Marked as needs practice";
-  else if (ratings.length && avg < WEAK_BELOW) reason = `Confidence ${avg.toFixed(1)}/5`;
   else if (flagged > 0) reason = `${flagged} problem${flagged > 1 ? "s" : ""} to revisit`;
 
   return {
@@ -110,7 +105,7 @@ export function topicStat(topic: Topic, progress: ProgressMap) {
     mastery,
     completed: total > 0 && solved / total >= TOPIC_DONE_AT,
     started: solved > 0 || ratings.length > 0,
-    weak: ratings.length >= 2 && avg < WEAK_BELOW,
+    weak: problems.some((p) => progress[p.slug]?.revisit),
   };
 }
 
@@ -251,9 +246,8 @@ export function phaseProgress(state: State) {
         IMPORTANT.map((s) => allProblems.find((x) => x.problem.slug === s)!.problem),
         state.problems,
       );
-      const masteredEssentials = IMPORTANT.filter((s) => state.problems[s]?.status === "mastered").length;
       const mocks = Math.min(1, state.mocks.length / Math.max(1, state.settings.mockTarget));
-      const value = (essentials.solved / essentials.total + masteredEssentials / IMPORTANT.length + mocks) / 3;
+      const value = (essentials.solved / essentials.total + mocks) / 2;
       return { phase, topics: [] as Topic[], solved: essentials.solved, total: essentials.total, value };
     }
     const ts = phase.topicIds.map((id) => getTopic(id)!).filter(Boolean);

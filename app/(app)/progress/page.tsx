@@ -163,7 +163,7 @@ function Analytics() {
   const everything = allProblems.map((x) => x.problem);
   const split = difficultySplit(everything, state.problems);
   const weakest = o.patternStats
-    .filter((x) => x.stat.rated > 0 || x.stat.weak)
+    .filter((x) => x.stat.solved > 0 || x.stat.weak)
     .sort((a, b) => a.stat.mastery - b.stat.mastery)
     .slice(0, 6);
   const failedAttempts = Object.values(state.problems).reduce((a, e) => a + e.failCount, 0);
@@ -269,7 +269,6 @@ function Analytics() {
                           {pattern.name} <span className="text-xs text-muted-foreground">· {topic.name}</span>
                         </span>
                         <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                          {stat.avg ? `${stat.avg.toFixed(1)}/5 · ` : ""}
                           {pct(stat.mastery)}
                         </span>
                       </div>

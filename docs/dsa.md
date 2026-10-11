@@ -28,7 +28,7 @@ Custom problems (`state.custom`, slug `custom-…`) are merged with the curated 
 | `/topics`, `/topics/[topic]` | `components/topic-detail.tsx` | Topic overview and its patterns |
 | `/patterns`, `/patterns/[id]` | `components/pattern-detail.tsx`, `pattern-status.tsx` | Pattern library: signals, approach, template, variations, pitfalls, transfer, complexity, problems, self-rating |
 | `/study-plan` | `app/(app)/study-plan/page.tsx` | Five phases and their progress (`phaseProgress`), today's plan |
-| `/revision` | `app/(app)/revision/page.tsx` | Only problems added to revision (`revisit: true`). Queues: Due today, All in revision, Weak, Previously failed, Mastered; quick actions Got it / Need more practice / Forgot / Review later |
+| `/revision` | `app/(app)/revision/page.tsx` | Only problems added to revision (`revisit: true`). Queues: Due today, All in revision, Previously failed; each card shows the revision note; quick actions Got it / Need more practice / Forgot / Review later |
 | `/interview` | `app/(app)/interview/page.tsx` | Readiness breakdown, timed practice (`components/timed-practice.tsx`), mock interview log, company lists |
 | `/interview/companies/[id]` | | One company list: notes and problems |
 | `/progress` | `app/(app)/progress/page.tsx` | Tabs via `UrlTabs`: progress, analytics (`?tab=analytics`), coverage (`components/coverage.tsx`) |
@@ -42,7 +42,8 @@ Custom problems (`state.custom`, slug `custom-…`) are merged with the curated 
   - The first success counts as a **solve**; later attempts count as **revisits**.
   - Revision is opt-in. `revise` (default: the problem's current `revisit` flag) sets `revisit`. Without it, `nextReview` is cleared and the problem is just solved.
   - When revising, `nextReview = today + reviewInDays`, falling back to 1 day for a failure or `reviewInterval(confidence, revisitCount)`. `LogAttemptDialog` has an "Add to revision" checkbox and a day picker.
-  - The status becomes **mastered** at confidence 5 with ≥ 2 revisits. A later low-confidence attempt drops it back to solved.
+  - There is no confidence rating or "mastered" status in the UI. A success sets the status to **solved** (legacy `mastered` entries display as solved). `confidence` is still stored with a fixed value for schema compatibility.
+- **Problem page**: "Mark as solved" is one click (`markSolved`, with an Undo toast); the timer's "Stop & mark solved" records the duration. "Add to revision" opens `RevisionDialog`: a note on what to revise (`Entry.revisionNote`) and the number of days (`addToRevision` / `removeFromRevision`). `LogAttemptDialog` is now only used by timed practice.
 - **Quick review** (`quickReview`) maps revision buttons onto `logAttempt`. "Later" only moves `nextReview` to tomorrow.
 - **Derived helpers** (`lib/progress.ts`): `isSolved`, `needsRevisit` (only `revisit: true`), `isDue` (in revision and `nextReview <= today`), `displayStatus`. Use these instead of comparing `status` strings directly.
 - **Pattern self-rating** (`updatePattern`): `unrated | learning | understood | needs-practice`, plus a note.

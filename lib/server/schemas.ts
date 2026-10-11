@@ -21,6 +21,7 @@ export const EntrySchema = z.object({
   status: z.enum(["todo", "attempted", "solved", "mastered"]),
   understanding: z.number().int().min(0).max(5),
   revisit: z.boolean(),
+  revisionNote: text(5_000).optional(),
   starred: z.boolean(),
   statement: text(),
   approach: text(),

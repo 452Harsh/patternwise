@@ -80,8 +80,6 @@ export function PatternDetail({ id }: { id: string }) {
               <dd className="font-mono">
                 {hydrated ? st.solved : 0}/{st.total}
               </dd>
-              <dt className="text-muted-foreground">Confidence</dt>
-              <dd className="font-mono">{hydrated && st.avg ? `${st.avg.toFixed(1)}/5` : "—"}</dd>
               {complexity && (
                 <>
                   <dt className="text-muted-foreground">Time</dt>

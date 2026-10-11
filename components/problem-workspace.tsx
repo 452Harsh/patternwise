@@ -9,7 +9,6 @@ import {
   BookmarkCheck,
   ChevronDown,
   CircleCheck,
-  Crown,
   ExternalLink,
   Lightbulb,
   Pause,
@@ -35,8 +34,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CodeBlock, LANGUAGES } from "@/components/code-block";
-import { CONFIDENCE_LABEL, LogAttemptDialog } from "@/components/log-attempt-dialog";
-import { Confidence, DifficultyBadge, EmptyState, Panel, Shimmer, StatusBadge, Tag } from "@/components/kit";
+import { RevisionDialog } from "@/components/revision-dialog";
+import { DifficultyBadge, EmptyState, Panel, Shimmer, StatusBadge, Tag } from "@/components/kit";
 import { NativeSelect } from "@/components/native-select";
 import { IMPORTANT_SET } from "@/data/important";
 import { useCatalog, useCatalogItem, type CatalogItem } from "@/lib/catalog";
@@ -45,8 +44,9 @@ import {
   blankEntry,
   displayStatus,
   isDue,
+  isSolved,
+  markSolved,
   removeCustomProblem,
-  today,
   updateEntry,
   useHydrated,
   useProgress,
@@ -163,8 +163,7 @@ function Workspace({ item }: { item: CatalogItem }) {
   const e: Entry = progress[problem.slug] ?? blankEntry();
   const set = (patch: Partial<Entry>) => updateEntry(problem.slug, patch, problem.title);
   const timer = useTimer();
-  const [logOpen, setLogOpen] = useState(false);
-  const [logDuration, setLogDuration] = useState<number | undefined>();
+  const [revisionOpen, setRevisionOpen] = useState(false);
   const [codeOpen, setCodeOpen] = useState(!!e.code);
   const [editingCode, setEditingCode] = useState(!e.code);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -172,15 +171,20 @@ function Workspace({ item }: { item: CatalogItem }) {
   const status = displayStatus(e);
   const similar = catalog.filter((x) => x.pattern.id === pattern.id && x.problem.slug !== problem.slug);
 
+  const solved = isSolved(e);
   const solve = () => {
     if (url) window.open(url, "_blank", "noopener,noreferrer");
     timer.start();
-    toast("Timer started", { description: "Stop it when you're done to log the attempt." });
+    toast("Timer started", { description: "Stop it when you've solved it." });
   };
-  const stopAndLog = () => {
-    setLogDuration(timer.stop());
-    setLogOpen(true);
+  const markAsSolved = (durationSec?: number) => {
+    const before = e;
+    markSolved(problem.slug, problem.title, durationSec);
+    toast.success("Marked as solved", {
+      action: { label: "Undo", onClick: () => updateEntry(problem.slug, before) },
+    });
   };
+  const stopAndSolve = () => markAsSolved(timer.stop());
 
   return (
     <div className="space-y-8">
@@ -215,25 +219,24 @@ function Workspace({ item }: { item: CatalogItem }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {timer.running ? (
-              <Button onClick={stopAndLog} variant="secondary" className="font-mono">
-                <Pause data-icon="inline-start" /> {duration(timer.elapsed) || "0s"} · Stop & log
+              <Button onClick={stopAndSolve} variant="secondary" className="font-mono">
+                <Pause data-icon="inline-start" /> {duration(timer.elapsed) || "0s"} · Stop & mark solved
               </Button>
             ) : (
               <Button onClick={solve} variant="secondary">
                 <Play data-icon="inline-start" /> Solve
               </Button>
             )}
-            <Button onClick={() => setLogOpen(true)}>
-              <CircleCheck data-icon="inline-start" /> {e.solveCount ? "Log revision" : "Mark as solved"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                set(e.revisit ? { revisit: false, nextReview: undefined } : { revisit: true, nextReview: e.nextReview ?? today() });
-                toast(e.revisit ? "Removed from revision" : "Added to revision");
-              }}
-              aria-pressed={e.revisit}
-            >
+            {solved ? (
+              <Button variant="secondary" disabled>
+                <CircleCheck data-icon="inline-start" className="text-success" /> Solved
+              </Button>
+            ) : (
+              <Button onClick={() => markAsSolved()}>
+                <CircleCheck data-icon="inline-start" /> Mark as solved
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setRevisionOpen(true)} aria-pressed={e.revisit}>
               {e.revisit ? <BookmarkCheck data-icon="inline-start" className="text-warning" /> : <BookmarkPlus data-icon="inline-start" />}
               {e.revisit ? "In revision" : "Add to revision"}
             </Button>
@@ -489,12 +492,6 @@ function Workspace({ item }: { item: CatalogItem }) {
                 <dd className="font-mono">{e.history.length}</dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Confidence</dt>
-                <dd className="flex h-6 items-center" title={CONFIDENCE_LABEL[e.understanding]}>
-                  <Confidence value={e.understanding} />
-                </dd>
-              </div>
-              <div>
                 <dt className="text-xs text-muted-foreground">Solved / revised</dt>
                 <dd className="font-mono">
                   {e.solveCount} / {e.revisitCount}
@@ -514,6 +511,16 @@ function Workspace({ item }: { item: CatalogItem }) {
                 className="mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-2.5 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30 dark:[color-scheme:dark]"
               />
             </label>
+            {e.revisit && (
+              <button
+                type="button"
+                onClick={() => setRevisionOpen(true)}
+                className="block w-full rounded-lg bg-warning/10 px-3 py-2 text-left text-sm outline-none hover:bg-warning/15 focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="block text-xs text-warning">To revise</span>
+                <span className="whitespace-pre-wrap">{e.revisionNote || <span className="text-muted-foreground">No note. Click to add one.</span>}</span>
+              </button>
+            )}
           </Panel>
           <nav aria-label="On this page" className="hidden lg:block">
             <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">On this page</p>
@@ -530,7 +537,7 @@ function Workspace({ item }: { item: CatalogItem }) {
         </aside>
       </div>
 
-      <LogAttemptDialog slug={problem.slug} title={problem.title} open={logOpen} onOpenChange={setLogOpen} durationSec={logDuration} />
+      <RevisionDialog slug={problem.slug} title={problem.title} open={revisionOpen} onOpenChange={setRevisionOpen} />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
@@ -584,7 +591,6 @@ function History({ entry }: { entry: Entry }) {
                 <span className="text-muted-foreground">{m.label}</span>
                 <span className="ml-auto flex items-center gap-3 font-mono text-xs text-muted-foreground">
                   {h.durationSec ? <span>{duration(h.durationSec)}</span> : null}
-                  <Confidence value={h.confidence} />
                   <time dateTime={h.date}>{shortDate(h.date)}</time>
                 </span>
               </div>
@@ -593,14 +599,6 @@ function History({ entry }: { entry: Entry }) {
           </li>
         );
       })}
-      {entry.status === "mastered" && (
-        <li className="relative flex items-center gap-3">
-          <span className="relative z-10 grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground ring-4 ring-background">
-            <Crown className="size-3.5" aria-hidden />
-          </span>
-          <span className="text-sm font-medium text-primary">Mastered</span>
-        </li>
-      )}
     </ol>
   );
 }

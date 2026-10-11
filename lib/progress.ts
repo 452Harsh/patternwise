@@ -28,6 +28,8 @@ export interface Entry {
   understanding: number;
   /** Manually added to the revision queue. */
   revisit: boolean;
+  /** What I want to revise, written when adding to revision. */
+  revisionNote?: string;
   starred: boolean;
   /** The problem restated in my own words. */
   statement: string;
@@ -771,9 +773,7 @@ export function logAttempt(slug: string, input: AttemptInput, title?: string) {
   let status: Status = prev.status;
   if (failed) status = prev.status === "todo" ? "attempted" : prev.status === "mastered" ? "solved" : prev.status;
   else {
-    if (status === "todo" || status === "attempted") status = "solved";
-    if (confidence >= 5 && revisitCount >= 2) status = "mastered";
-    else if (confidence <= 2 && status === "mastered") status = "solved";
+    if (status === "todo" || status === "attempted" || status === "mastered") status = "solved";
   }
 
   const next: Entry = {
@@ -807,8 +807,6 @@ export function logAttempt(slug: string, input: AttemptInput, title?: string) {
 
   const name = title ?? slug;
   if (failed) state = withEvent(state, { type: "failed", slug, text: `Couldn't solve ${name} yet` });
-  else if (status === "mastered" && prev.status !== "mastered")
-    state = withEvent(state, { type: "mastered", slug, text: `Mastered ${name}` });
   else if (kind === "revisit") state = withEvent(state, { type: "reviewed", slug, text: `Reviewed ${name}` });
   else state = withEvent(state, { type: "solved", slug, text: `Solved ${name}` });
   write(state);
@@ -1126,6 +1124,20 @@ export function resetAll() {
 
 export const isSolved = (e: Entry | undefined) => e?.status === "solved" || e?.status === "mastered";
 
+/** One click "Mark as solved": no rating, keeps the problem's revision state. */
+export function markSolved(slug: string, title?: string, durationSec?: number) {
+  logAttempt(slug, { result: "solved", confidence: 3, durationSec }, title);
+}
+
+/** Put a problem in revision with a note on what to revise, due in `days` days. */
+export function addToRevision(slug: string, note: string, days: number, title?: string) {
+  updateEntry(slug, { revisit: true, revisionNote: note.trim() || undefined, nextReview: addDays(today(), days) }, title);
+}
+
+export function removeFromRevision(slug: string) {
+  updateEntry(slug, { revisit: false, revisionNote: undefined, nextReview: undefined });
+}
+
 /** Only problems I've put in revision myself. */
 export function needsRevisit(e: Entry | undefined): boolean {
   return !!e?.revisit;
@@ -1140,7 +1152,6 @@ export type DisplayStatus = "not-started" | "attempted" | "solved" | "needs-revi
 
 export function displayStatus(e: Entry | undefined): DisplayStatus {
   if (!e || e.status === "todo") return "not-started";
-  if (e.status === "mastered") return "mastered";
   if (needsRevisit(e)) return "needs-revision";
   return e.status === "attempted" ? "attempted" : "solved";
 }

@@ -48,10 +48,6 @@ export function TopicDetail({ id }: { id: string }) {
             <dd className="font-mono">
               {hydrated ? s.solved : 0}/{s.total}
             </dd>
-            <dt className="text-muted-foreground">Mastered</dt>
-            <dd className="font-mono">{hydrated ? s.mastered : 0}</dd>
-            <dt className="text-muted-foreground">Confidence</dt>
-            <dd className="font-mono">{hydrated && s.avg ? `${s.avg.toFixed(1)}/5` : "—"}</dd>
           </dl>
         </Panel>
       </header>

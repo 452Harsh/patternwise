@@ -138,7 +138,6 @@ function ProblemsInner() {
             <option value="attempted">Attempted</option>
             <option value="solved">Solved</option>
             <option value="needs-revision">Needs revision</option>
-            <option value="mastered">Mastered</option>
           </NativeSelect>
           <NativeSelect aria-label="Revision" value={revision} onChange={(e) => setRevision(e.target.value as Revision)}>
             <option value="all">Any revision state</option>

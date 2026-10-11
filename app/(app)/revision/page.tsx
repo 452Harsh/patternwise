@@ -3,15 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Brain, Check, Clock, Crown, PartyPopper, RotateCcw, ThumbsDown, TriangleAlert, Undo2 } from "lucide-react";
+import { Brain, Check, Clock, PartyPopper, RotateCcw, ThumbsDown, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Confidence, DifficultyBadge, EmptyState, PageHeader, Panel, Shimmer, Tag } from "@/components/kit";
+import { DifficultyBadge, EmptyState, PageHeader, Panel, Shimmer, Tag } from "@/components/kit";
 import { useCatalog, type CatalogItem } from "@/lib/catalog";
 import { relativeDay } from "@/lib/format";
 import {
   isDue,
   quickReview,
-  reviewInterval,
   today,
   useHydrated,
   useProgress,
@@ -20,14 +19,12 @@ import {
 } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
-type Bucket = "due" | "all" | "weak" | "failed" | "mastered";
+type Bucket = "due" | "all" | "failed";
 
 const BUCKETS: { id: Bucket; label: string; hint: string; test: (e: Entry) => boolean }[] = [
   { id: "due", label: "Due today", hint: "Scheduled reviews that have arrived, oldest first.", test: (e) => isDue(e) },
   { id: "all", label: "All in revision", hint: "Every problem you've added to revision.", test: () => true },
-  { id: "weak", label: "Weak", hint: "Low confidence (1–2).", test: (e) => e.understanding > 0 && e.understanding <= 2 },
-  { id: "failed", label: "Previously failed", hint: "Attempts you couldn't finish. Retry from scratch.", test: (e) => e.failCount > 0 && e.status !== "mastered" },
-  { id: "mastered", label: "Mastered", hint: "Confident across multiple revisions. Occasional check-ins only.", test: (e) => e.status === "mastered" },
+  { id: "failed", label: "Previously failed", hint: "Attempts you couldn't finish. Retry from scratch.", test: (e) => e.failCount > 0 },
 ];
 
 const ACTIONS: { id: QuickReview; label: string; icon: typeof Check; variant: "default" | "secondary" | "outline" | "ghost"; hint: string }[] = [
@@ -67,9 +64,6 @@ function ReviewCard({ item, entry }: { item: CatalogItem; entry: Entry }) {
             <span>
               Attempts <span className="font-mono text-foreground">{entry.history.length}</span>
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              Confidence <Confidence value={entry.understanding} />
-            </span>
             <span>
               Next{" "}
               <span className={cn("font-mono", due ? "text-warning" : "text-foreground")}>
@@ -77,6 +71,9 @@ function ReviewCard({ item, entry }: { item: CatalogItem; entry: Entry }) {
               </span>
             </span>
           </div>
+          {entry.revisionNote && (
+            <p className="mt-2 whitespace-pre-wrap rounded-lg bg-warning/10 px-3 py-2 text-sm">{entry.revisionNote}</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Review ${problem.title}`}>
           {ACTIONS.map((a) => {
@@ -135,16 +132,6 @@ export default function RevisionPage() {
         }
       />
 
-      <Panel className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Interval ladder</span>
-        {[1, 2, 3, 4, 5].map((c) => (
-          <span key={c} className="inline-flex items-center gap-1.5">
-            <Confidence value={c} /> <span className="font-mono">{reviewInterval(c, 0)}d</span>
-          </span>
-        ))}
-        <span>· each successful revision stretches the gap by 50%.</span>
-      </Panel>
-
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Revision categories">
         {BUCKETS.map((b) => (
           <button
@@ -180,7 +167,7 @@ export default function RevisionPage() {
           </ul>
         ) : (
           <EmptyState
-            icon={bucket === "due" ? PartyPopper : bucket === "mastered" ? Crown : bucket === "failed" ? Undo2 : bucket === "weak" ? TriangleAlert : RotateCcw}
+            icon={bucket === "due" ? PartyPopper : bucket === "failed" ? Undo2 : RotateCcw}
             title={bucket === "due" ? "No revision tasks today" : `Nothing in “${current.label}”`}
             description={
               bucket === "due"

@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 
 const DAY_PRESETS = [1, 3, 7, 14, 30];
 
-export const CONFIDENCE_LABEL = ["Not rated", "Lost", "Shaky", "OK with hints", "Solid", "Could teach it"];
 
 const RESULTS: { value: AttemptResult; label: string; hint: string }[] = [
   { value: "solved", label: "Solved", hint: "On my own" },
@@ -50,16 +49,15 @@ export function LogAttemptDialog(props: Props) {
 function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
   const entry = useProgress()[slug] ?? blankEntry();
   const [result, setResult] = useState<AttemptResult>("solved");
-  const [confidence, setConfidence] = useState(entry.understanding || 3);
   const [minutes, setMinutes] = useState(durationSec ? String(Math.max(1, Math.round(durationSec / 60))) : "");
   const [note, setNote] = useState("");
   const [revise, setRevise] = useState(entry.revisit);
-  /** Empty = use the suggested interval for the chosen confidence. */
+  /** Empty = use the default interval. */
   const [days, setDays] = useState("");
 
   const isRevision = entry.solveCount > 0;
   const failed = result === "failed";
-  const suggestedDays = failed ? 1 : reviewInterval(confidence, entry.revisitCount + (isRevision ? 1 : 0));
+  const suggestedDays = failed ? 1 : reviewInterval(3, entry.revisitCount + (isRevision ? 1 : 0));
   const nextDays = Number(days) >= 1 ? Math.round(Number(days)) : suggestedDays;
 
   const save = () => {
@@ -68,7 +66,7 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
       slug,
       {
         result,
-        confidence: failed ? 1 : confidence,
+        confidence: failed ? 1 : 3,
         durationSec: Number.isFinite(mins) && mins > 0 ? Math.round(mins * 60) : durationSec,
         note,
         revise,
@@ -116,33 +114,6 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
               ))}
             </div>
           </fieldset>
-
-          {!failed && (
-            <fieldset>
-              <legend className="mb-2 text-xs font-medium text-muted-foreground">
-                Confidence — could you solve a variation cold?
-              </legend>
-              <div className="flex items-center gap-1.5">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    aria-pressed={confidence === n}
-                    aria-label={`${n} — ${CONFIDENCE_LABEL[n]}`}
-                    onClick={() => setConfidence(n)}
-                    className={cn(
-                      "size-9 rounded-lg border font-mono text-sm font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring",
-                      n <= confidence ? "border-primary/50 bg-primary text-primary-foreground" : "hover:bg-muted",
-                      n === confidence && "animate-pop",
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
-                <span className="ml-2 text-sm text-muted-foreground">{CONFIDENCE_LABEL[confidence]}</span>
-              </div>
-            </fieldset>
-          )}
 
           <div className="grid grid-cols-[110px_1fr] items-start gap-3">
             <div className="space-y-1.5">

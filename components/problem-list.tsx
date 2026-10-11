@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
-import { Confidence, DifficultyBadge, Panel, Shimmer, StatusBadge, Tag } from "@/components/kit";
+import { DifficultyBadge, Panel, Shimmer, StatusBadge, Tag } from "@/components/kit";
 import type { CatalogItem } from "@/lib/catalog";
 import { relativeDay } from "@/lib/format";
 import { displayStatus, isDue, updateEntry, useHydrated, useProgress, type Entry } from "@/lib/progress";
@@ -86,10 +86,7 @@ export function ProblemList({
                   </div>
                   <div className="mt-auto flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
                     <StatusBadge status={displayStatus(e)} />
-                    <span className="flex items-center gap-3">
-                      <Confidence value={e?.understanding ?? 0} />
-                      <span className="font-mono">{platform}</span>
-                    </span>
+                    <span className="font-mono">{platform}</span>
                   </div>
                 </Panel>
               </Link>
