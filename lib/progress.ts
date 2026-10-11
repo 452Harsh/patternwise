@@ -1147,11 +1147,10 @@ export function isDue(e: Entry | undefined): boolean {
   return !!e?.revisit && !!e.nextReview && e.status !== "todo" && e.nextReview <= today();
 }
 
-/** Display status, including the derived "Needs revision". */
+/** Display status, including the derived "Needs revision". Unsolved attempts show as not started. */
 export type DisplayStatus = "not-started" | "attempted" | "solved" | "needs-revision" | "mastered";
 
 export function displayStatus(e: Entry | undefined): DisplayStatus {
-  if (!e || e.status === "todo") return "not-started";
   if (needsRevisit(e)) return "needs-revision";
-  return e.status === "attempted" ? "attempted" : "solved";
+  return isSolved(e) ? "solved" : "not-started";
 }

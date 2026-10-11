@@ -31,7 +31,7 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 - [x] Interview prep: readiness score, timed practice, mock interview log, company lists
 - [x] Progress, analytics (charts, activity calendar, heatmap) and coverage tabs
 - [x] Notes page aggregating all DSA notes
-- [x] Python for C++ developers (`/python`, unlisted): 12 lessons with C++ STL comparisons and 36 practice questions with reference solutions and review checklists
+- [x] Python for C++ developers (`/python`, unlisted): 12 lessons with C++ STL comparisons, examples, complexity and common mistakes
 
 ### System Design module
 - [x] Content: 77 concepts (54 HLD, 23 LLD), 16 HLD architecture patterns, 19 GoF patterns (UML plus Java and Python), 17 HLD and 17 LLD problems

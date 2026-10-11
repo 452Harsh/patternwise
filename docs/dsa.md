@@ -33,7 +33,7 @@ Custom problems (`state.custom`, slug `custom-…`) are merged with the curated 
 | `/interview/companies/[id]` | | One company list: notes and problems |
 | `/progress` | `app/(app)/progress/page.tsx` | Tabs via `UrlTabs`: progress, analytics (`?tab=analytics`), coverage (`components/coverage.tsx`) |
 | `/notes` | `components/notes-view.tsx` (`scope="dsa"`) | Every note across problems and patterns, searchable |
-| `/python`, `/python/[lesson]` | `components/python-track.tsx`, content in `data/python/` | Python for C++ developers: roadmap and 12 lessons (STL comparison, complexity, mistakes) with 3 practice questions each. **Deliberately not in the nav or dashboard**; reached by URL only. Question completion is stored in `State.checklist` under `py:<lesson>:<n>` |
+| `/python`, `/python/[lesson]` | `components/python-track.tsx`, content in `data/python/` | Python for C++ developers: roadmap and 12 lessons (STL comparison, examples, complexity, when to use, mistakes). **Deliberately not in the nav or dashboard**; reached by URL only. Static content, no user state |
 
 ## Progress model
 
@@ -43,7 +43,7 @@ Custom problems (`state.custom`, slug `custom-…`) are merged with the curated 
   - Revision is opt-in. `revise` (default: the problem's current `revisit` flag) sets `revisit`. Without it, `nextReview` is cleared and the problem is just solved.
   - When revising, `nextReview = today + reviewInDays`, falling back to 1 day for a failure or `reviewInterval(confidence, revisitCount)`. `LogAttemptDialog` has an "Add to revision" checkbox and a day picker.
   - There is no confidence rating or "mastered" status in the UI. A success sets the status to **solved** (legacy `mastered` entries display as solved). `confidence` is still stored with a fixed value for schema compatibility.
-- **Problem page**: "Mark as solved" is one click (`markSolved`, with an Undo toast); the timer's "Stop & mark solved" records the duration. "Add to revision" opens `RevisionDialog`: a note on what to revise (`Entry.revisionNote`) and the number of days (`addToRevision` / `removeFromRevision`). `LogAttemptDialog` is now only used by timed practice.
+- **Problem page**: "Mark as solved" is one click (`markSolved`, with an Undo toast); the timer's "Stop & mark solved" records the duration. "Add to revision" opens `RevisionDialog`: a note on what to revise (`Entry.revisionNote`) and the number of days (`addToRevision` / `removeFromRevision`). `LogAttemptDialog` is now only used by timed practice. The problem page no longer shows attempt counts or the attempt history, and there is no "Attempted" status: `displayStatus` returns needs-revision, solved or not-started, and `problemScore` counts solved problems only (attempt history is still stored).
 - **Quick review** (`quickReview`) maps revision buttons onto `logAttempt`. "Later" only moves `nextReview` to tomorrow.
 - **Derived helpers** (`lib/progress.ts`): `isSolved`, `needsRevisit` (only `revisit: true`), `isDue` (in revision and `nextReview <= today`), `displayStatus`. Use these instead of comparing `status` strings directly.
 - **Pattern self-rating** (`updatePattern`): `unrated | learning | understood | needs-practice`, plus a note.

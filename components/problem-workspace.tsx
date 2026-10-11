@@ -16,8 +16,6 @@ import {
   Star,
   Timer,
   Trash2,
-  CircleX,
-  RotateCcw,
   FileQuestion,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -39,7 +37,7 @@ import { DifficultyBadge, EmptyState, Panel, Shimmer, StatusBadge, Tag } from "@
 import { NativeSelect } from "@/components/native-select";
 import { IMPORTANT_SET } from "@/data/important";
 import { useCatalog, useCatalogItem, type CatalogItem } from "@/lib/catalog";
-import { duration, relativeDay, shortDate } from "@/lib/format";
+import { duration } from "@/lib/format";
 import {
   blankEntry,
   displayStatus,
@@ -64,7 +62,6 @@ const SECTIONS = [
   ["mistakes", "Mistakes"],
   ["solution", "Solution"],
   ["similar", "Similar"],
-  ["history", "History"],
 ] as const;
 
 function Section({ id, title, children, hint }: { id: string; title: string; children: React.ReactNode; hint?: string }) {
@@ -462,10 +459,6 @@ function Workspace({ item }: { item: CatalogItem }) {
             )}
           </Section>
 
-          <Section id="history" title="Revision history">
-            <History entry={e} />
-          </Section>
-
           {custom && (
             <div className="border-t pt-6">
               <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
@@ -486,22 +479,6 @@ function Workspace({ item }: { item: CatalogItem }) {
                 </span>
               )}
             </div>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
-              <div>
-                <dt className="text-xs text-muted-foreground">Attempts</dt>
-                <dd className="font-mono">{e.history.length}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Solved / revised</dt>
-                <dd className="font-mono">
-                  {e.solveCount} / {e.revisitCount}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Last attempt</dt>
-                <dd className="font-mono">{relativeDay(e.lastAttemptAt)}</dd>
-              </div>
-            </dl>
             <label className="block">
               <span className="text-xs text-muted-foreground">Next revision {isDue(e) && <span className="text-warning">· due</span>}</span>
               <input
@@ -561,45 +538,6 @@ function Workspace({ item }: { item: CatalogItem }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-const RESULT_META = {
-  solved: { label: "Solved", icon: CircleCheck, tone: "text-success bg-success/10" },
-  hints: { label: "Solved with hints", icon: Lightbulb, tone: "text-info bg-info/10" },
-  failed: { label: "Couldn't solve", icon: CircleX, tone: "text-destructive bg-destructive/10" },
-  reviewed: { label: "Reviewed", icon: RotateCcw, tone: "text-info bg-info/10" },
-} as const;
-
-function History({ entry }: { entry: Entry }) {
-  if (!entry.history.length) {
-    return <p className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">No attempts yet. Your first one shows up here.</p>;
-  }
-  return (
-    <ol className="relative space-y-3 before:absolute before:top-3 before:bottom-3 before:left-[15px] before:w-px before:bg-border">
-      {entry.history.map((h, i) => {
-        const m = RESULT_META[h.result ?? "solved"];
-        const Icon = m.icon;
-        return (
-          <li key={`${h.at ?? h.date}-${i}`} className="relative flex gap-3">
-            <span className={cn("relative z-10 grid size-8 shrink-0 place-items-center rounded-full ring-4 ring-background", m.tone)}>
-              <Icon className="size-3.5" aria-hidden />
-            </span>
-            <Panel className="min-w-0 flex-1 px-3 py-2">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="font-medium">Attempt {i + 1}</span>
-                <span className="text-muted-foreground">{m.label}</span>
-                <span className="ml-auto flex items-center gap-3 font-mono text-xs text-muted-foreground">
-                  {h.durationSec ? <span>{duration(h.durationSec)}</span> : null}
-                  <time dateTime={h.date}>{shortDate(h.date)}</time>
-                </span>
-              </div>
-              {h.note && <p className="mt-1 text-sm text-muted-foreground">{h.note}</p>}
-            </Panel>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

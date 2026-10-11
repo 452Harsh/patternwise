@@ -1,10 +1,7 @@
 /**
- * "Python for C++ developers" track at /python. Static content; the only user
- * state is question completion, stored in `State.checklist` under `py:<lesson>:<n>`.
+ * "Python for C++ developers" track at /python. Static content, no user state.
  * Prose fields support `inline code` with backticks.
  */
-
-export type PyLevel = "Beginner" | "Intermediate" | "Interview";
 
 export interface PyCompare {
   label: string;
@@ -22,22 +19,6 @@ export interface PyOp {
   code: string;
   time: string;
   note?: string;
-}
-
-export interface PyQuestion {
-  level: PyLevel;
-  title: string;
-  /** LeetCode slug, when the question is a LeetCode problem. */
-  leetcode?: string;
-  prompt: string;
-  /** Sample input/output, shown as a code block. */
-  sample?: string;
-  starter: string;
-  hints: string[];
-  solution: string;
-  complexity: string;
-  /** What a reviewer checks; the learner ticks these against their own code. */
-  review: string[];
 }
 
 export interface PyLesson {
@@ -60,7 +41,4 @@ export interface PyLesson {
   useCases: string[];
   leetcode: { title: string; slug: string }[];
   mistakes: string[];
-  practice: PyQuestion[];
 }
-
-export const pyKey = (lesson: string, i: number) => `py:${lesson}:${i}`;

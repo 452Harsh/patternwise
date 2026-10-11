@@ -16,11 +16,9 @@ import {
 
 /* ---------- per-problem score ---------- */
 
-/** 0–1 score for one problem: not started 0 · attempted 0.2 · solved 1. */
+/** 0–1 score for one problem: solved 1, anything else 0. */
 export function problemScore(e: Entry | undefined): number {
-  if (!e || e.status === "todo") return 0;
-  if (e.status === "attempted") return 0.2;
-  return 1;
+  return isSolved(e) ? 1 : 0;
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);

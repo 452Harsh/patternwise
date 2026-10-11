@@ -135,7 +135,6 @@ function ProblemsInner() {
           <NativeSelect aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
             <option value="all">Any status</option>
             <option value="not-started">Not started</option>
-            <option value="attempted">Attempted</option>
             <option value="solved">Solved</option>
             <option value="needs-revision">Needs revision</option>
           </NativeSelect>

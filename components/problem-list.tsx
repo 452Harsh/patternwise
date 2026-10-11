@@ -134,7 +134,6 @@ export function ProblemList({
               {!hideTopic && <th scope="col" className="px-3 py-2.5 font-medium">Topic</th>}
               {!hidePattern && <th scope="col" className="px-3 py-2.5 font-medium">Pattern</th>}
               <th scope="col" className="px-3 py-2.5 font-medium">Status</th>
-              <th scope="col" className="px-3 py-2.5 text-right font-medium">Attempts</th>
               <th scope="col" className="px-3 py-2.5 font-medium">Last solved</th>
               <th scope="col" className="px-3 py-2.5 pr-4 font-medium">Next revision</th>
             </tr>
@@ -142,7 +141,6 @@ export function ProblemList({
           <tbody>
             {items.map(({ problem, topic, pattern }) => {
               const e = progress[problem.slug];
-              const attempts = e?.history.length ?? 0;
               const href = `/problems/${problem.slug}`;
               return (
                 <tr
@@ -170,7 +168,6 @@ export function ProblemList({
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <StatusBadge status={displayStatus(e)} />
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-xs tabular-nums">{attempts || "—"}</td>
                   <td className="px-3 py-2.5 text-xs whitespace-nowrap text-muted-foreground">{relativeDay(lastSolved(e))}</td>
                   <td className="px-3 py-2.5 pr-4 text-xs whitespace-nowrap">
                     <NextReview e={e} />

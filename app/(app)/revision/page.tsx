@@ -62,9 +62,6 @@ function ReviewCard({ item, entry }: { item: CatalogItem; entry: Entry }) {
               Last solved <span className="font-mono text-foreground">{relativeDay(lastSolved)}</span>
             </span>
             <span>
-              Attempts <span className="font-mono text-foreground">{entry.history.length}</span>
-            </span>
-            <span>
               Next{" "}
               <span className={cn("font-mono", due ? "text-warning" : "text-foreground")}>
                 {due ? `due ${relativeDay(entry.nextReview)}` : relativeDay(entry.nextReview)}
