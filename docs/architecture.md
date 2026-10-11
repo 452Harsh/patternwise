@@ -31,7 +31,6 @@ Static curriculum content (DSA problems, System Design concepts/patterns/problem
 | UI components | `components/*`, `components/sd/*`, `components/ui/*` | Reusable UI; `ui/` is shadcn (Base UI). |
 | Pages | `app/(app)/**/page.tsx` | Compose components; most are client components reading the store. |
 | Server | `proxy.ts`, `app/api/**`, `lib/server/*` | Auth gate, session cookies, validation, MongoDB reads/writes. |
-| AI Coach | `lib/coach/*` (engine), `lib/ai/*` (model providers), `lib/server/rag/*` (knowledge + vector search), `lib/server/coach/*` (context, prompts, threads), `app/api/coach/*` | Deterministic recommendations → grounded prompts → open-weight model. See [`ai-coach.md`](ai-coach.md). |
 
 ## 3. Client state & sync (`lib/progress.ts`)
 
@@ -51,7 +50,6 @@ Components call hooks built on `useSyncExternalStore`:
 
 - `useStore()` – whole state; `useProgress()` – DSA problems map; `usePatternProgress()` – DSA pattern map
 - Subscribers also listen for `storage` events, so other tabs in the same browser re-render when the local copy changes.
-- `syncNow()` – flushes pending edits immediately (the coach calls it before asking the server to analyse progress).
 - `useHydrated()` – `true` once data has loaded from the server (or the local copy is being used offline). **Pages render skeletons until this is true.**
 - `useSyncStatus()` – `"idle" | "loading" | "ready" | "saving" | "error" | "offline"` (shown by `SyncIndicator`)
 
@@ -96,12 +94,12 @@ Legacy: a v1 `localStorage` key (`dsa-tracker:v1`) from the original browser-onl
 
 Full endpoint reference: [`api.md`](api.md).
 
-## 5. Modules: DSA vs System Design (and the AI Coach)
+## 5. Modules: DSA vs System Design
 
-The app is two independent preparation environments sharing one shell, store, database and auth, plus a third module, **AI Coach** (`/coach`), that reads their data. Every coach page works in one context at a time (`ctx=dsa|sd`, `CtxSwitch`), so DSA and System Design data are never mixed in a coach answer either.
+The app is two independent preparation environments sharing one shell, store, database and auth.
 
-- **Module detection** (`components/shell/nav.ts` → `moduleForPath`): paths under `/system-design` are System Design, paths under `/coach` are AI Coach, everything else is DSA. Shared routes (`/settings`, `isSharedRoute`) keep the last module (`components/shell/module.ts` → `useModule`, stored in `localStorage` key `pw:module`).
-- **Navigation** is defined per module in `MODULES` (`nav.ts`); the sidebar, mobile nav, ⌘K palette (`command-menu.tsx`) and `G`-shortcuts read only the active module's items. `G 1` / `G 2` / `G 3` switch modules (`moduleDigit`); the switcher returns to the last page visited in that module (`pw:last:dsa`, `pw:last:sd`).
+- **Module detection** (`components/shell/nav.ts` → `moduleForPath`): any path under `/system-design` is System Design; everything else is DSA. Shared routes (`/settings`, `isSharedRoute`) keep the last module (`components/shell/module.ts` → `useModule`, stored in `localStorage` key `pw:module`).
+- **Navigation** is defined per module in `MODULES` (`nav.ts`); the sidebar, mobile nav, ⌘K palette (`command-menu.tsx`) and `G`-shortcuts read only the active module's items. `G 1` / `G 2` switch modules; the switcher returns to the last page visited in that module (`pw:last:dsa`, `pw:last:sd`).
 - **Data separation**: DSA progress lives in `problems`/`patterns`/…; System Design progress lives in `sd`/`diagrams`/…. Stats are separate (`lib/stats.ts` for DSA, `lib/sd.ts` for SD); `activityByDay(state, scope)` and `streaks(state, scope)` take the module scope; `ActivityFeed` and `DailyPlan` accept a `scope` / `tracks` filter.
 - **The one shared document** is the daily plan (`plans[date]`), which contains both DSA and SD tasks; each module's page filters by track (`DailyPlan tracks={["dsa"]}` vs `tracks={["hld","lld"]}`).
 
@@ -126,6 +124,3 @@ The app is two independent preparation environments sharing one shell, store, da
 | Daily plan (DSA + SD tasks) | `buildDailyPlan`, `systemDesignTasks` | `lib/plan.ts` |
 | Streaks / activity calendar | `streaks(state, scope)`, `activityByDay(state, scope)` | `lib/stats.ts` |
 | Diff / merge | `diff`, `mergeStates`, `replayLocalEdits` | `lib/progress.ts` |
-| Coach priorities, stop rule, difficulty moves | `analyzeDSA`, `analyzeSD` | `lib/coach/dsa.ts`, `lib/coach/sd.ts` |
-| Coach daily plan | `buildCoachPlan` | `lib/coach/plan.ts` |
-| Retrieval (Atlas Vector Search → in-memory → keyword) | `retrieve` | `lib/server/rag/store.ts` |

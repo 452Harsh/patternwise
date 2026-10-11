@@ -47,15 +47,13 @@ Conventions:
 | `CodeBlock` | `components/code-block.tsx` | Syntax-highlighted code |
 | SD kit (`SDProgressPanel`, `CompleteButton`, `ReviewButtons`, `SDNotes`, `StarToggle`, `SDStatusBadge`, `TrackTag`, `SDItemList`) | `components/sd/sd-kit.tsx` | Any SD item page |
 | Workspace kit (`WSection`, `StringList`, `RowsEditor`, `PromptField`, `Hints`, `rid`) | `components/sd/workspace-kit.tsx` | HLD/LLD workspace sections |
-| Coach kit (`useCoachCtx`, `CtxSwitch`, `useCoachStream`, `CoachMarkdown`, `PriorityBadge`, `SourceFooter`, `ModelStatus`) | `components/coach/coach-kit.tsx` | Any AI Coach view: module context, streaming, rendering, explainable priority |
-| `ModulePlanCard`, `CoachChat`, `RecognizeTool`, `HintsTool`, `ExplainTool` | `components/coach/*` | Coach pages |
 | `FlowDiagram`, `UMLDiagram` | `components/sd/flow-diagram.tsx`, `uml-diagram.tsx` | Visual explanations |
 
 ## Shell (`components/shell/`)
 
 - **`nav.ts`:** `MODULES` (one entry per module, holding its groups and mobile `tabs`), `SHARED_NAV`, `moduleForPath`, `isSharedRoute`, `navItems`, `isActive`. `isActive` understands query-filtered entries such as `/progress?tab=analytics`.
 - **`module.ts`:** `useModule()` returns the active module, `moduleEntry(id)` returns the last page visited in that module, and the localStorage keys `pw:module`, `pw:last:dsa` and `pw:last:sd` are kept here.
-- **`module-switcher.tsx`:** the DSA | System Design | AI Coach control. In the `full` sidebar variant DSA and System Design share a row and AI Coach spans the row below; `compact` (mobile) shows three short labels.
+- **`module-switcher.tsx`:** the DSA | System Design control. It comes in a `full` variant (in the sidebar) and a `compact` variant (on mobile).
 - **`app-sidebar.tsx`:** a collapsible sidebar with module groups and revision badges (`useRevisionBadges`).
 - **Other shell files:**
   - `mobile-nav.tsx`: the top bar plus a bottom tab bar (`MODULES[m].tabs`)

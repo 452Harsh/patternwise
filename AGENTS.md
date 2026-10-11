@@ -10,10 +10,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Patternwise: guide for coding agents
 
-Patternwise is a single-user study app with two independent preparation modules and an AI coach on top:
+Patternwise is a single-user study app with two independent modules:
 - **DSA** (data structures and algorithms), at `/`
 - **System Design** (HLD and LLD), at `/system-design`
-- **AI Coach**, at `/coach`: a deterministic recommendation engine plus open-weight models (Gemma via Ollama) and RAG (MongoDB Atlas Vector Search)
 
 Stack: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui on Base UI, and MongoDB. The backend is Next.js route handlers plus `proxy.ts`.
 
@@ -27,7 +26,6 @@ Stack: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui
 | DSA features | `docs/dsa.md` |
 | System Design features | `docs/system-design.md`, `docs/hld.md`, `docs/lld.md` |
 | UI work | `docs/ui-architecture.md` |
-| AI Coach | `docs/ai-coach.md` |
 | "Why is it like this?" | `docs/decisions.md` |
 
 ## Commands
@@ -36,11 +34,10 @@ Stack: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui
 npm run dev          # http://localhost:3000 (needs .env.local)
 npm run lint         # ESLint + React Compiler rules
 npm run check:data   # curriculum integrity (DSA + SD)
-npm run check:coach  # AI Coach engine checks
 npm run build        # production build (type-checks)
 ```
 
-Before finishing a change, run `npm run lint && npm run check:data && npm run check:coach && npm run build`. CI (`.github/workflows/ci.yml`) runs the same checks on every push; there are no browser tests in the repo yet.
+Before finishing a change, run `npm run lint && npm run check:data && npm run build`. CI (`.github/workflows/ci.yml`) runs the same checks on every push; there are no browser tests in the repo yet.
 
 ## Where things go
 
@@ -53,11 +50,6 @@ Before finishing a change, run `npm run lint && npm run check:data && npm run ch
   - `loadState` / `applyPatch` in `lib/server/repo.ts`.
 
   `docs/development.md` §5 has the full recipe.
-- **AI Coach:**
-  - Logic goes in `lib/coach/*` (pure; add a check to `scripts/check-coach.ts`).
-  - Model providers go in `lib/ai/*`.
-  - Prompts, context and retrieval go in `lib/server/coach/*` and `lib/server/rag/*`.
-  - Pages go in `app/(app)/coach/*`.
 - **Derived metrics:** pure functions in `lib/stats.ts` (DSA) or `lib/sd.ts` (SD).
 - **Curriculum:** static TypeScript in `data/` (DSA) or `data/sd/` (SD). For SD, register new ids in `data/sd/ids.ts`.
 - **Components:**
@@ -105,10 +97,5 @@ Before finishing a change, run `npm run lint && npm run check:data && npm run ch
   - cookie flags;
   - constant-time password check;
   - `PatchSchema` size caps.
-- **AI Coach rules:**
-  - The engine computes every user statistic and the model only explains it. The server recomputes facts from MongoDB, and never trusts stats sent by the client.
-  - Keep coach requests scoped to one module (`ctx: "dsa" | "sd"`).
-  - Never put user data into the `knowledge` collection.
-  - Talk to models only through `chatModel()` / `embeddingModel()`.
 - **Wording:** the product is "DSA preparation". Don't use "FAANG".
 - **Docs:** when a feature lands or changes, update `docs/roadmap.md` (and any other affected doc) in the same change.

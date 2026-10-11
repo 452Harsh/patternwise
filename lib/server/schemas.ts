@@ -104,15 +104,6 @@ export const SettingsSchema = z.object({
   navCollapsed: z.record(text(40), z.boolean()).optional(),
   includeSD: z.boolean().optional(),
   sdAutoReview: z.boolean().optional(),
-  coach: z
-    .object({
-      minutes: z.number().int().min(15).max(600),
-      focus: z.enum(["balanced", "dsa", "sd"]),
-      difficulty: z.enum(["auto", "Easy", "Medium", "Hard"]),
-      interviewDate: day.optional(),
-      dailyProblems: z.number().int().min(1).max(10),
-    })
-    .optional(),
 });
 
 export const MetaSchema = z

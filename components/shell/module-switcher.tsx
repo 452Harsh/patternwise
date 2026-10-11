@@ -3,11 +3,10 @@
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { moduleEntry, useModule } from "./module";
-import { MODULE_LIST, moduleDigit, type ModuleId } from "./nav";
+import { MODULE_LIST, type ModuleId } from "./nav";
 
 /**
- * DSA ↔ System Design ↔ AI Coach switch. In the wide sidebar the two study modules sit side by side
- * and AI Coach spans the row below. "full" = icon + label (wide sidebar), "icons" = stacked icons
+ * DSA ↔ System Design switch. "full" = icon + label (wide sidebar), "icons" = stacked icons
  * (collapsed sidebar), "compact" = short labels (mobile header).
  */
 export function ModuleSwitcher({ variant = "full", className }: { variant?: "full" | "icons" | "compact"; className?: string }) {
@@ -24,7 +23,7 @@ export function ModuleSwitcher({ variant = "full", className }: { variant?: "ful
       className={cn(
         "rounded-lg border border-sidebar-border bg-background/40 p-0.5",
         // "DSA" is short; give the System Design label the extra width so it never truncates.
-        variant === "icons" ? "flex flex-col gap-0.5" : variant === "compact" ? "grid grid-cols-3 gap-0.5" : "grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-0.5",
+        variant === "icons" ? "flex flex-col gap-0.5" : variant === "compact" ? "grid grid-cols-2 gap-0.5" : "grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-0.5",
         className,
       )}
     >
@@ -38,16 +37,15 @@ export function ModuleSwitcher({ variant = "full", className }: { variant?: "ful
             role="radio"
             aria-checked={active}
             aria-label={`${m.label} — ${m.description}`}
-            title={`${m.label} — ${m.description} (G ${moduleDigit(m.id)})`}
+            title={`${m.label} — ${m.description} (G ${m.id === "dsa" ? "1" : "2"})`}
             onClick={() => go(m.id)}
             className={cn(
               "flex items-center justify-center gap-1.5 rounded-md text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
               variant === "icons" ? "size-9" : "h-8 px-2",
-              variant === "full" && m.id === "coach" && "col-span-2",
               active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
             )}
           >
-            {variant !== "compact" && <Icon className="size-4 shrink-0" aria-hidden />}
+            <Icon className="size-4 shrink-0" aria-hidden />
             {variant !== "icons" && <span className="truncate">{variant === "compact" ? m.short : m.label}</span>}
           </button>
         );

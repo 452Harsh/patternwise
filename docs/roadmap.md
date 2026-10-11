@@ -47,30 +47,17 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 - [x] Progress, analytics, notes and study plan (5 phases), all scoped to SD
 - [x] SD tasks in the daily plan (shown only on SD pages)
 
-### AI Coach (`/coach`; see [`ai-coach.md`](ai-coach.md))
-- [x] Model-agnostic AI layer: `ChatModel`/`EmbeddingModel`, Ollama provider and OpenAI-compatible provider (`lib/ai/`)
-- [x] Default open-weight stack: Gemma 4 E2B (QAT) for chat and EmbeddingGemma for embeddings, run locally via Ollama; streaming responses
-- [x] Deterministic recommendation engine for DSA and SD: explainable priorities, the stop rule, difficulty progression, variation coverage, the "studied but not applied" check (`lib/coach/`); 29 engine checks (`npm run check:coach`)
-- [x] Today's Plan: preferences (time, focus, difficulty, interview date, problems/day), timed steps per module, after-today pick, avoid-for-now, saved per day, auto-ticked when practice is logged, plus a streamed "Coach's take"
-- [x] RAG: 649 curriculum documents, incremental indexer, Atlas Vector Search index `knowledge_vector` with in-memory and keyword fallbacks, sources shown under each answer
-- [x] Ask Coach (grounded chat with saved private threads), Spot the pattern, 4-level progressive hints, Explain it back (score feeds pattern rating / SD rating)
-- [x] Interview mode for DSA, HLD and LLD with stages, timer, interviewer follow-ups, feedback and save-to-progress
-- [x] My Weak Areas (deterministic, per module)
-- [x] AI Coach as a third module in the shell (switcher, ⌘K, `G 3`, mobile tabs); DSA/SD context kept separate on every coach page
-
 ## 2. Partially implemented
 
 - [ ] **Stop reviews:** exists for System Design (`setSDReviews`) but **not for DSA**; DSA problems can only be snoozed ("Review later").
 - [ ] **Multi-device sync:** works through load-time merge and per-item newest-wins, but there is no live update across devices. Tabs in the same browser stay in step through the shared localStorage copy (`storage` events); another device only sees changes after a reload.
 - [ ] **Diagram editor:** core editing works. Missing: undo/redo, multi-select, export (PNG/SVG), curved or orthogonal edge routing.
 - [ ] **UML layout:** `autoLayout` is a simple level-based layout. Large diagrams can need manual dragging.
-- [ ] **AI Coach on Vercel:** the deterministic parts work anywhere, but the model needs a reachable endpoint. Locally that's Ollama; a deployment needs `AI_PROVIDER=openai-compatible` pointing at a hosted open-model server (not set up yet).
-- [ ] **Coach grounding:** the prompts forbid invented statistics and every fact is supplied, but replies are not automatically checked against the data.
 - [ ] **Login rate limiting:** in memory, so it is per server instance and resets on cold start (weak on Vercel).
 
 ## 3. Not implemented
 
-- [x] CI: GitHub Actions runs lint, type-check, curriculum checks, coach engine checks and the build on every push and PR; LeetCode links are re-verified weekly
+- [x] CI: GitHub Actions runs lint, type-check, curriculum checks and the build on every push and PR; LeetCode links are re-verified weekly
 - [ ] Automated browser (e2e) tests in the repo
 - [ ] Multiple users or accounts (no `users` collection, no `userId`)
 - [ ] Password change from the UI (the password is the `APP_PASSWORD` env var)
@@ -90,8 +77,6 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 - **The import success toast** reports only the number of DSA problems, even when SD data was imported too.
 - **Dev only:** after moving or renaming routes, stale `.next/types` can cause type errors; delete `.next`. `next dev` re-adds the `AGENTS.md` block.
 
-- **Coach plan vs today's edits.** A saved plan is a snapshot; logging practice auto-ticks its steps, but new weaknesses only show after **Regenerate**.
-
 ## 5. Technical debt
 
 - **Unused settings:** `Settings.navCollapsed` and `Settings.includeSD` are still in the type, `DEFAULT_SETTINGS` and the schema, but nothing reads them.
@@ -103,7 +88,6 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 
 ## 6. Suggested implementation order
 
-0. **AI Coach next steps:** a hosted Gemma endpoint for the Vercel deployment; a post-check that numbers in replies match the facts; plan regeneration hints when progress changes during the day.
 1. **Add a test baseline:** unit tests for `reviewInterval`, `logAttempt`, `rateSD` (including the same-day correction), `diff` and `mergeStates`; one Playwright smoke test (login → rate → reload); a GitHub Action running lint, `check:data`, build and tests.
 2. **Data fixes:** align the SD "mastered" definition (pick one rule and use it in both `rateSD` and `trackStats`), and run a one-off `reviewCount` recount from `history`.
 3. **Stop reviews for DSA,** mirroring `setSDReviews` (`reviewOff` on `Entry` plus a schema field and UI on the problem page and revision rows).
@@ -115,9 +99,6 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 9. **Optional:** live sync (polling or SSE), multi-user accounts.
 
 ## 7. Do not change without a strong reason
-
-- **Coach rule: the engine decides, the model explains.** Don't move calculations into prompts or let the client send user statistics to `/api/coach/chat`; the server recomputes them from MongoDB.
-- **Coach privacy:** never index user data into `knowledge`.
 
 - **Curriculum and SD ids, and LeetCode slugs:** they're database keys.
 - **The `kind:id` SD key format** and the single `sd` map.

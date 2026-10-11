@@ -25,13 +25,8 @@ Collection names are defined once in `COLLECTIONS` (`lib/server/db.ts`).
 | `sd_sessions` | `id` | `SDSession` | replace whole list | System Design |
 | `activity` | `id` | `ActivityEvent` | replace whole list (≤ 300) | shared |
 | `meta` | `"meta"` (single doc) | `{ daily, plans, checklist, settings, updatedAt }` | `$set` of changed keys | shared |
-| `knowledge` | `dsa:pattern:<id>`, `sd:concept:<id>`, … | curriculum document + `embedding` (768-d) | rebuilt by the indexer (incremental) | AI Coach (global, **no user data**) |
-| `coach_plans` | `yyyy-mm-dd` | `{ plan: CoachPlan, explanations: { dsa?, sd? } }` | written by `/api/coach/plan` and `/chat` | AI Coach (private) |
-| `coach_threads` | thread id | `{ ctx, mode, title, ref, messages[], createdAt, updatedAt }` | upsert after each coach reply | AI Coach (private) |
 
-Indexes (created lazily in `ensureIndexes`): `activity.at`, `problem_progress.nextReview`, `problem_progress.status`, `sd_progress.nextReview`, `sd_diagrams.problemKey`, `knowledge.{module, contentType}`, `coach_threads.{ctx, updatedAt}`.
-
-Atlas Vector Search index `knowledge_vector` on `knowledge` (vector `embedding`, 768 dimensions, cosine; filters `module`, `contentType`) is created by the knowledge indexer (`lib/server/rag/indexer.ts`). The coach collections are not part of the synced client `State`; they're read and written only by `/api/coach/*`. See [`ai-coach.md`](ai-coach.md).
+Indexes (created lazily in `ensureIndexes`): `activity.at`, `problem_progress.nextReview`, `problem_progress.status`, `sd_progress.nextReview`, `sd_diagrams.problemKey`.
 
 ## Document shapes
 
@@ -80,7 +75,7 @@ Interview-mode session: `{ mode: "hld"|"lld"|"mixed", itemKey, title, startedAt,
 - `Company`: `{ id, name, notes, slugs: string[], createdAt }`
 - `Mock`: `{ id, date, title, minutes, rating, notes }`
 - `ActivityEvent`: `{ id, at, type, slug?, patternId?, sdKey?, text }` — types: DSA `solved|reviewed|failed|mastered|note|pattern|flagged|mock`, SD `sd-studied|sd-reviewed|sd-practiced|sd-mastered|sd-note|sd-session`.
-- `meta.settings` (`Settings`): `name, dailyNew, mockTarget, sidebarCollapsed, navCollapsed, includeSD, sdAutoReview, coach?` (`coach` = `CoachPrefs`: `minutes, focus, difficulty, interviewDate?, dailyProblems`) (the `navCollapsed` and `includeSD` fields are no longer read — see technical debt in [`roadmap.md`](roadmap.md)).
+- `meta.settings` (`Settings`): `name, dailyNew, mockTarget, sidebarCollapsed, navCollapsed, includeSD, sdAutoReview` (the `navCollapsed` and `includeSD` fields are no longer read — see technical debt in [`roadmap.md`](roadmap.md)).
 - `meta.plans[date]`: `PlanTask[]` `{ id, kind: "new"|"pattern"|"failed"|"theory"|"hld"|"lld", label, slug?, patternId?, sdKey? }`.
 
 ## Conventions

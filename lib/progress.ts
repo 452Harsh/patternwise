@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from "react";
 import type { Difficulty } from "@/data/types";
-import type { CoachPrefs } from "./coach/types";
 
 /* ---------- types ---------- */
 
@@ -211,8 +210,6 @@ export interface Settings {
   includeSD: boolean;
   /** "Mark as complete" on System Design items schedules spaced-repetition reviews. */
   sdAutoReview: boolean;
-  /** AI Coach preferences (time, focus, difficulty, interview date). */
-  coach?: CoachPrefs;
 }
 
 export interface State {
@@ -312,9 +309,23 @@ const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(
 
 /* ---------- dates ---------- */
 
-// Pure date helpers live in lib/day.ts so server code can use them too.
-import { addDays, daysBetween, reviewInterval, today } from "./day";
-export { addDays, daysBetween, reviewInterval, today } from "./day";
+export const today = () => new Date().toLocaleDateString("en-CA");
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString("en-CA");
+}
+
+export function daysBetween(from: string, to: string): number {
+  const ms = new Date(`${to}T12:00:00`).getTime() - new Date(`${from}T12:00:00`).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+/** Days until the next review, by confidence (1–5). Grows with each successful revisit. */
+const BASE_INTERVAL = [1, 1, 3, 7, 14, 30];
+export const reviewInterval = (confidence: number, revisitCount: number) =>
+  Math.max(1, Math.round(BASE_INTERVAL[confidence] * (1 + 0.5 * revisitCount)));
 
 /* ---------- persistence ---------- */
 
@@ -534,13 +545,6 @@ async function flush() {
     // More edits arrived while saving: send them too.
     if (status === "ready" && cache !== target) scheduleSync(150);
   }
-}
-
-/** Send pending edits now, e.g. before the AI coach reads progress on the server. Best effort. */
-export async function syncNow() {
-  clearTimeout(timer);
-  for (let i = 0; i < 30 && inflight; i++) await new Promise((r) => setTimeout(r, 100));
-  await flush();
 }
 
 /** Load from the server once per page load. Called by <SyncBoot/>. */

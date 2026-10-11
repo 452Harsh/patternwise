@@ -23,7 +23,7 @@ import type { SDKind } from "@/data/sd";
 import { useCatalog } from "@/lib/catalog";
 import { useSDItems } from "@/lib/sd";
 import { moduleEntry, useModule } from "./module";
-import { MODULES, MODULE_LIST, moduleDigit, navItems } from "./nav";
+import { MODULES, navItems, type ModuleId } from "./nav";
 
 const OPEN_EVENT = "patternwise:command";
 export const openCommandMenu = () => window.dispatchEvent(new Event(OPEN_EVENT));
@@ -40,7 +40,7 @@ const SD_GROUPS: { kind: SDKind; heading: string; icon: typeof Blocks }[] = [
 
 /**
  * ⌘K palette and "g then x" shortcuts, scoped to the current module.
- * "g 1" / "g 2" / "g 3" switch between DSA, System Design and AI Coach.
+ * "g 1" / "g 2" switch between DSA and System Design.
  */
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
@@ -48,7 +48,7 @@ export function CommandMenu() {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const mod = useModule();
-  const others = MODULE_LIST.filter((m) => m.id !== mod);
+  const other: ModuleId = mod === "dsa" ? "sd" : "dsa";
   const catalog = useCatalog();
   const sdItems = useSDItems();
   const items = navItems(mod);
@@ -79,10 +79,9 @@ export function CommandMenu() {
       }
       if (pendingG && Date.now() - pendingG < 1200) {
         pendingG = 0;
-        const target = MODULE_LIST[Number(e.key) - 1];
-        if (target) {
+        if (e.key === "1" || e.key === "2") {
           e.preventDefault();
-          router.push(moduleEntry(target.id));
+          router.push(moduleEntry(e.key === "1" ? "dsa" : "sd"));
           return;
         }
         const item = itemsRef.current.find((n) => n.key === e.key.toLowerCase());
@@ -111,7 +110,7 @@ export function CommandMenu() {
     <>
       <CommandDialog open={open} onOpenChange={setOpen} title={`Search ${label}`} description={`Jump to anything in ${label}`} className="sm:max-w-xl">
         <Command>
-          <CommandInput placeholder={mod === "dsa" ? "Search DSA problems, patterns, topics…" : mod === "sd" ? "Search concepts, patterns, design problems…" : "Search coach pages and actions…"} />
+          <CommandInput placeholder={mod === "dsa" ? "Search DSA problems, patterns, topics…" : "Search concepts, patterns, design problems…"} />
           <CommandList className="max-h-[60vh]">
             <CommandEmpty>No results in {label}.</CommandEmpty>
             <CommandGroup heading={`${label} pages`}>
@@ -127,22 +126,18 @@ export function CommandMenu() {
               })}
             </CommandGroup>
             <CommandGroup heading="Actions">
-              {others.map((o) => (
-                <CommandItem key={o.id} value={`action switch to ${o.label} module`} onSelect={() => go(moduleEntry(o.id))}>
-                  <ArrowLeftRight aria-hidden />
-                  Switch to {o.label}
-                  <CommandShortcut>G {moduleDigit(o.id)}</CommandShortcut>
-                </CommandItem>
-              ))}
-              {mod !== "coach" && (
-                <CommandItem
-                  value={`action add a ${mod === "dsa" ? "DSA" : "design"} problem`}
-                  onSelect={() => go(mod === "dsa" ? "/problems?add=1" : "/system-design/problems?add=1")}
-                >
-                  <Plus aria-hidden />
-                  Add a {mod === "dsa" ? "DSA" : "design"} problem
-                </CommandItem>
-              )}
+              <CommandItem value={`action switch to ${MODULES[other].label} module`} onSelect={() => go(moduleEntry(other))}>
+                <ArrowLeftRight aria-hidden />
+                Switch to {MODULES[other].label}
+                <CommandShortcut>G {other === "dsa" ? "1" : "2"}</CommandShortcut>
+              </CommandItem>
+              <CommandItem
+                value={`action add a ${mod === "dsa" ? "DSA" : "design"} problem`}
+                onSelect={() => go(mod === "dsa" ? "/problems?add=1" : "/system-design/problems?add=1")}
+              >
+                <Plus aria-hidden />
+                Add a {mod === "dsa" ? "DSA" : "design"} problem
+              </CommandItem>
               <CommandItem
                 value="action toggle theme dark light"
                 onSelect={() => {
@@ -198,7 +193,7 @@ export function CommandMenu() {
                   ))}
                 </CommandGroup>
               </>
-            ) : mod === "sd" ? (
+            ) : (
               SD_GROUPS.map(({ kind, heading, icon: Icon }) => {
                 const rows = sdItems.filter((x) => x.kind === kind);
                 if (!rows.length) return null;
@@ -217,7 +212,7 @@ export function CommandMenu() {
                   </CommandGroup>
                 );
               })
-            ) : null}
+            )}
           </CommandList>
         </Command>
       </CommandDialog>
@@ -236,14 +231,13 @@ export function CommandMenu() {
               </span>
             </li>
             <li className="flex items-center justify-between">
-              Switch to DSA / System Design / AI Coach
-              <span className="flex items-center gap-1">
+              Switch to DSA / System Design
+              <span className="flex gap-1">
                 <Kbd>G</Kbd>
                 <Kbd>1</Kbd>
                 <span className="text-muted-foreground">/</span>
+                <Kbd>G</Kbd>
                 <Kbd>2</Kbd>
-                <span className="text-muted-foreground">/</span>
-                <Kbd>3</Kbd>
               </span>
             </li>
             {items

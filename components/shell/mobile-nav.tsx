@@ -26,13 +26,13 @@ export function MobileNav() {
   const def = MODULES[mod];
   const badges = useRevisionBadges();
   const siblings = navItems(mod);
-  const { current } = streaks(state, mod === "coach" ? "all" : mod);
+  const { current } = streaks(state, mod);
 
   return (
     <>
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b bg-background/85 px-3 backdrop-blur md:hidden">
         <Logo collapsed href={def.home} />
-        <ModuleSwitcher variant="compact" className="w-44" />
+        <ModuleSwitcher variant="compact" className="w-40" />
         <div className="flex items-center">
           <button
             type="button"

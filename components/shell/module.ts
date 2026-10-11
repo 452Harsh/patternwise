@@ -15,8 +15,7 @@ const listeners = new Set<() => void>();
 
 const readModule = (): ModuleId => {
   try {
-    const v = localStorage.getItem(KEY);
-    return v === "sd" || v === "coach" ? v : "dsa";
+    return localStorage.getItem(KEY) === "sd" ? "sd" : "dsa";
   } catch {
     return "dsa";
   }

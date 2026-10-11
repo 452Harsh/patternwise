@@ -25,10 +25,6 @@ export const COLLECTIONS = {
   diagrams: "sd_diagrams",
   sdCustom: "sd_custom_problems",
   sdSessions: "sd_sessions",
-  // AI Coach. `knowledge` is global curriculum content only; the other two are private user data.
-  knowledge: "knowledge",
-  coachPlans: "coach_plans",
-  coachThreads: "coach_threads",
 } as const;
 
 export async function db(): Promise<Db> {
@@ -45,7 +41,5 @@ async function ensureIndexes(d: Db) {
     d.collection(COLLECTIONS.progress).createIndex({ status: 1 }),
     d.collection(COLLECTIONS.sd).createIndex({ nextReview: 1 }),
     d.collection(COLLECTIONS.diagrams).createIndex({ problemKey: 1 }),
-    d.collection(COLLECTIONS.knowledge).createIndex({ module: 1, contentType: 1 }),
-    d.collection(COLLECTIONS.coachThreads).createIndex({ ctx: 1, updatedAt: -1 }),
   ]);
 }
