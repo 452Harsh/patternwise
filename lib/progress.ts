@@ -751,6 +751,8 @@ export interface AttemptInput {
   fresh?: boolean;
   /** Keep (or put) the problem in the revision queue. Off = just mark it solved. */
   revise?: boolean;
+  /** Days until the next review, chosen by me. Falls back to the confidence-based interval. */
+  reviewInDays?: number;
 }
 
 /** Record an attempt. A review is scheduled only when the problem is kept in revision. */
@@ -784,7 +786,9 @@ export function logAttempt(slug: string, input: AttemptInput, title?: string) {
     revisit: revise,
     solvedAt: failed ? prev.solvedAt : (prev.solvedAt ?? now),
     lastAttemptAt: now,
-    nextReview: revise ? addDays(date, failed ? 1 : reviewInterval(confidence, revisitCount)) : undefined,
+    nextReview: revise
+      ? addDays(date, input.reviewInDays ?? (failed ? 1 : reviewInterval(confidence, revisitCount)))
+      : undefined,
     history: [
       ...prev.history,
       {

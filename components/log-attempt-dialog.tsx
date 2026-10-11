@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { blankEntry, logAttempt, reviewInterval, useProgress, type AttemptResult } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
+const DAY_PRESETS = [1, 3, 7, 14, 30];
+
 export const CONFIDENCE_LABEL = ["Not rated", "Lost", "Shaky", "OK with hints", "Solid", "Could teach it"];
 
 const RESULTS: { value: AttemptResult; label: string; hint: string }[] = [
@@ -52,10 +54,13 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
   const [minutes, setMinutes] = useState(durationSec ? String(Math.max(1, Math.round(durationSec / 60))) : "");
   const [note, setNote] = useState("");
   const [revise, setRevise] = useState(entry.revisit);
+  /** Empty = use the suggested interval for the chosen confidence. */
+  const [days, setDays] = useState("");
 
   const isRevision = entry.solveCount > 0;
   const failed = result === "failed";
-  const nextDays = failed ? 1 : reviewInterval(confidence, entry.revisitCount + (isRevision ? 1 : 0));
+  const suggestedDays = failed ? 1 : reviewInterval(confidence, entry.revisitCount + (isRevision ? 1 : 0));
+  const nextDays = Number(days) >= 1 ? Math.round(Number(days)) : suggestedDays;
 
   const save = () => {
     const mins = Number(minutes);
@@ -67,6 +72,7 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
         durationSec: Number.isFinite(mins) && mins > 0 ? Math.round(mins * 60) : durationSec,
         note,
         revise,
+        reviewInDays: nextDays,
       },
       title,
     );
@@ -180,6 +186,37 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
               </span>
             )}
           </label>
+
+          {revise && (
+            <fieldset>
+              <legend className="mb-2 text-xs font-medium text-muted-foreground">Review again in</legend>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {DAY_PRESETS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={nextDays === d}
+                    onClick={() => setDays(String(d))}
+                    className={cn(
+                      "h-8 rounded-lg border px-2.5 font-mono text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                      nextDays === d ? "border-primary/50 bg-primary text-primary-foreground" : "hover:bg-muted",
+                    )}
+                  >
+                    {d}d
+                  </button>
+                ))}
+                <Input
+                  aria-label="Custom number of days"
+                  inputMode="numeric"
+                  value={days}
+                  onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))}
+                  placeholder={String(suggestedDays)}
+                  className="h-8 w-16 font-mono"
+                />
+                <span className="text-xs text-muted-foreground">days</span>
+              </div>
+            </fieldset>
+          )}
         </div>
 
         <DialogFooter>
