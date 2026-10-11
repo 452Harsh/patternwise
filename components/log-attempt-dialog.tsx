@@ -22,7 +22,7 @@ export const CONFIDENCE_LABEL = ["Not rated", "Lost", "Shaky", "OK with hints", 
 const RESULTS: { value: AttemptResult; label: string; hint: string }[] = [
   { value: "solved", label: "Solved", hint: "On my own" },
   { value: "hints", label: "With hints", hint: "Needed a nudge" },
-  { value: "failed", label: "Couldn't solve", hint: "Schedules a retry tomorrow" },
+  { value: "failed", label: "Couldn't solve", hint: "Not solved yet" },
 ];
 
 interface Props {
@@ -51,6 +51,7 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
   const [confidence, setConfidence] = useState(entry.understanding || 3);
   const [minutes, setMinutes] = useState(durationSec ? String(Math.max(1, Math.round(durationSec / 60))) : "");
   const [note, setNote] = useState("");
+  const [revise, setRevise] = useState(entry.revisit);
 
   const isRevision = entry.solveCount > 0;
   const failed = result === "failed";
@@ -65,11 +66,12 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
         confidence: failed ? 1 : confidence,
         durationSec: Number.isFinite(mins) && mins > 0 ? Math.round(mins * 60) : durationSec,
         note,
+        revise,
       },
       title,
     );
-    toast.success(failed ? "Logged. It's queued for tomorrow." : isRevision ? "Revision logged" : "Nice — solve logged", {
-      description: `Next review in ${nextDays} day${nextDays === 1 ? "" : "s"}.`,
+    toast.success(failed ? "Attempt logged" : isRevision ? "Revision logged" : "Nice — marked as solved", {
+      description: revise ? `In revision · next review in ${nextDays} day${nextDays === 1 ? "" : "s"}.` : "Not added to revision.",
     });
     setNote("");
     onOpenChange(false);
@@ -164,9 +166,20 @@ function LogForm({ slug, title, onOpenChange, durationSec, onLogged }: Props) {
             </div>
           </div>
 
-          <p className="rounded-lg bg-muted px-3 py-2 font-mono text-xs text-muted-foreground">
-            next review → in {nextDays} day{nextDays === 1 ? "" : "s"}
-          </p>
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-muted px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={revise}
+              onChange={(e) => setRevise(e.target.checked)}
+              className="size-4 accent-primary"
+            />
+            <span>Add to revision</span>
+            {revise && (
+              <span className="ml-auto font-mono text-xs text-muted-foreground">
+                next review → in {nextDays} day{nextDays === 1 ? "" : "s"}
+              </span>
+            )}
+          </label>
         </div>
 
         <DialogFooter>

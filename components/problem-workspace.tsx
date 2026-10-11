@@ -46,6 +46,7 @@ import {
   displayStatus,
   isDue,
   removeCustomProblem,
+  today,
   updateEntry,
   useHydrated,
   useProgress,
@@ -228,7 +229,7 @@ function Workspace({ item }: { item: CatalogItem }) {
             <Button
               variant="outline"
               onClick={() => {
-                set({ revisit: !e.revisit });
+                set(e.revisit ? { revisit: false, nextReview: undefined } : { revisit: true, nextReview: e.nextReview ?? today() });
                 toast(e.revisit ? "Removed from revision" : "Added to revision");
               }}
               aria-pressed={e.revisit}

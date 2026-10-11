@@ -10,7 +10,6 @@ import { useCatalog, type CatalogItem } from "@/lib/catalog";
 import { relativeDay } from "@/lib/format";
 import {
   isDue,
-  isSolved,
   quickReview,
   reviewInterval,
   today,
@@ -21,13 +20,12 @@ import {
 } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
-type Bucket = "due" | "first" | "second" | "weak" | "failed" | "mastered";
+type Bucket = "due" | "all" | "weak" | "failed" | "mastered";
 
 const BUCKETS: { id: Bucket; label: string; hint: string; test: (e: Entry) => boolean }[] = [
   { id: "due", label: "Due today", hint: "Scheduled reviews that have arrived, oldest first.", test: (e) => isDue(e) },
-  { id: "first", label: "First revision", hint: "Solved once, never revisited. The first review locks it in.", test: (e) => isSolved(e) && e.revisitCount === 0 },
-  { id: "second", label: "Second revision", hint: "Revisited once. One more good review and the gap stretches.", test: (e) => isSolved(e) && e.revisitCount === 1 },
-  { id: "weak", label: "Weak", hint: "Low confidence (1–2) or flagged by you.", test: (e) => e.status !== "todo" && (e.revisit || (e.understanding > 0 && e.understanding <= 2)) },
+  { id: "all", label: "All in revision", hint: "Every problem you've added to revision.", test: () => true },
+  { id: "weak", label: "Weak", hint: "Low confidence (1–2).", test: (e) => e.understanding > 0 && e.understanding <= 2 },
   { id: "failed", label: "Previously failed", hint: "Attempts you couldn't finish. Retry from scratch.", test: (e) => e.failCount > 0 && e.status !== "mastered" },
   { id: "mastered", label: "Mastered", hint: "Confident across multiple revisions. Occasional check-ins only.", test: (e) => e.status === "mastered" },
 ];
@@ -105,7 +103,7 @@ export default function RevisionPage() {
     BUCKETS.map((b) => [
       b.id,
       catalog
-        .filter((x) => progress[x.problem.slug] && b.test(progress[x.problem.slug]))
+        .filter((x) => progress[x.problem.slug]?.revisit && b.test(progress[x.problem.slug]))
         .sort((a, c) => (progress[a.problem.slug].nextReview ?? "9999").localeCompare(progress[c.problem.slug].nextReview ?? "9999")),
     ]),
   ) as Record<Bucket, CatalogItem[]>;
@@ -113,7 +111,7 @@ export default function RevisionPage() {
   const t = today();
   const upcomingWeek = catalog.filter((x) => {
     const e = progress[x.problem.slug];
-    return e?.nextReview && e.nextReview > t && e.nextReview <= relativeLimit(t);
+    return e?.revisit && e.nextReview && e.nextReview > t && e.nextReview <= relativeLimit(t);
   }).length;
   const current = BUCKETS.find((b) => b.id === bucket)!;
   const items = lists[bucket];
@@ -186,8 +184,8 @@ export default function RevisionPage() {
             title={bucket === "due" ? "No revision tasks today" : `Nothing in “${current.label}”`}
             description={
               bucket === "due"
-                ? "You're caught up. Solve something new — it joins the schedule automatically."
-                : "Log attempts on problems and they'll be sorted into these buckets."
+                ? "You're caught up. Only problems you add to revision show up here."
+                : "Use “Add to revision” on a problem to put it here."
             }
             action={
               <Link href="/problems" className="text-sm font-medium text-primary hover:underline">

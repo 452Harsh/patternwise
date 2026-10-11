@@ -749,9 +749,11 @@ export interface AttemptInput {
   note?: string;
   /** Count as a fresh solve rather than a revision even if solved before. */
   fresh?: boolean;
+  /** Keep (or put) the problem in the revision queue. Off = just mark it solved. */
+  revise?: boolean;
 }
 
-/** Record an attempt with a confidence rating and schedule the next review. */
+/** Record an attempt. A review is scheduled only when the problem is kept in revision. */
 export function logAttempt(slug: string, input: AttemptInput, title?: string) {
   let state = read();
   const prev = state.problems[slug] ?? blankEntry();
@@ -762,6 +764,7 @@ export function logAttempt(slug: string, input: AttemptInput, title?: string) {
   const solveCount = prev.solveCount + (kind === "solve" && !failed ? 1 : 0);
   const revisitCount = prev.revisitCount + (kind === "revisit" && !failed ? 1 : 0);
   const confidence = failed ? Math.min(input.confidence, 1) || 1 : input.confidence;
+  const revise = input.revise ?? prev.revisit;
 
   let status: Status = prev.status;
   if (failed) status = prev.status === "todo" ? "attempted" : prev.status === "mastered" ? "solved" : prev.status;
@@ -778,10 +781,10 @@ export function logAttempt(slug: string, input: AttemptInput, title?: string) {
     solveCount,
     revisitCount,
     failCount: prev.failCount + (failed ? 1 : 0),
-    revisit: failed ? true : false,
+    revisit: revise,
     solvedAt: failed ? prev.solvedAt : (prev.solvedAt ?? now),
     lastAttemptAt: now,
-    nextReview: addDays(date, failed ? 1 : reviewInterval(confidence, revisitCount)),
+    nextReview: revise ? addDays(date, failed ? 1 : reviewInterval(confidence, revisitCount)) : undefined,
     history: [
       ...prev.history,
       {
@@ -1119,15 +1122,13 @@ export function resetAll() {
 
 export const isSolved = (e: Entry | undefined) => e?.status === "solved" || e?.status === "mastered";
 
-/** Flagged by me, failed, or solved but still shaky. */
+/** Only problems I've put in revision myself. */
 export function needsRevisit(e: Entry | undefined): boolean {
-  if (!e) return false;
-  if (e.revisit) return true;
-  return isSolved(e) && e.understanding > 0 && e.understanding <= 2;
+  return !!e?.revisit;
 }
 
 export function isDue(e: Entry | undefined): boolean {
-  return !!e?.nextReview && e.status !== "todo" && e.nextReview <= today();
+  return !!e?.revisit && !!e.nextReview && e.status !== "todo" && e.nextReview <= today();
 }
 
 /** Display status, including the derived "Needs revision". */
@@ -1136,6 +1137,6 @@ export type DisplayStatus = "not-started" | "attempted" | "solved" | "needs-revi
 export function displayStatus(e: Entry | undefined): DisplayStatus {
   if (!e || e.status === "todo") return "not-started";
   if (e.status === "mastered") return "mastered";
-  if (needsRevisit(e) || (e.failCount > 0 && e.status === "attempted")) return "needs-revision";
+  if (needsRevisit(e)) return "needs-revision";
   return e.status === "attempted" ? "attempted" : "solved";
 }

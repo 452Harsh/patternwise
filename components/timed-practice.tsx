@@ -10,7 +10,7 @@ import { NativeSelect } from "@/components/native-select";
 import { IMPORTANT_SET } from "@/data/important";
 import { useCatalog, type CatalogItem } from "@/lib/catalog";
 import { duration } from "@/lib/format";
-import { isDue, isSolved, useProgress } from "@/lib/progress";
+import { isSolved, needsRevisit, useProgress } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
 const LIMITS = { Easy: 20, Medium: 35, Hard: 50 } as const;
@@ -38,7 +38,7 @@ export function TimedPractice() {
     if (difficulty !== "any" && problem.difficulty !== difficulty) return false;
     if (pool === "essentials") return IMPORTANT_SET.has(problem.slug);
     if (pool === "unsolved") return !isSolved(e);
-    if (pool === "revision") return isDue(e) || (e?.failCount ?? 0) > 0;
+    if (pool === "revision") return needsRevisit(e);
     return true;
   });
 

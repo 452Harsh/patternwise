@@ -38,7 +38,7 @@ function StarButton({ slug, title, starred }: { slug: string; title: string; sta
 }
 
 function NextReview({ e }: { e?: Entry }) {
-  if (!e?.nextReview) return <span className="text-muted-foreground">—</span>;
+  if (!e?.revisit || !e.nextReview) return <span className="text-muted-foreground">—</span>;
   const due = isDue(e);
   return <span className={cn(due && "font-medium text-warning")}>{due ? "Due" : relativeDay(e.nextReview)}</span>;
 }
