@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Confidence, DifficultyBadge, Meter, Panel, Tag, masteryTone, pct } from "@/components/kit";
+import { DifficultyBadge, Meter, Panel, Tag, masteryTone, pct } from "@/components/kit";
 import type { SDItem } from "@/data/sd";
 import { isSDDue, useHydrated, useStore } from "@/lib/progress";
 import { sdScore } from "@/lib/sd";
@@ -31,10 +31,7 @@ export function SDCardGrid({ items, showTrack, cols = 3 }: { items: SDItem[]; sh
                 <p className="line-clamp-2 text-sm text-muted-foreground">{x.summary}</p>
                 <div className="mt-auto flex items-center justify-between gap-2 border-t pt-2.5 text-xs">
                   <SDStatusBadge entry={e} />
-                  <span className="flex items-center gap-2">
-                    {due && <Tag className="bg-warning/10 text-warning">due</Tag>}
-                    <Confidence value={e?.confidence ?? 0} />
-                  </span>
+                  {due && <Tag className="bg-warning/10 text-warning">due</Tag>}
                 </div>
               </Panel>
             </Link>

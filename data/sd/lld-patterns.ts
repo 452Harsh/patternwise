@@ -9,18 +9,17 @@ export const LLD_PATTERNS: LLDPattern[] = [
     category: "creational",
     intent:
       "Define an interface for creating an object, but let subclasses decide which concrete class to instantiate. The creator works with products only through their common interface.",
-    problem:
-      "Code that calls new on concrete classes directly is tightly coupled to them, so adding a new product type means editing every place that creates objects. You want creation to vary while the surrounding workflow stays the same.",
+    problem: "If your code creates objects directly, like EmailNotification(), it is tied to that exact class. To add SmsNotification, you must edit every place that creates notifications. Factory Method moves the creation into one method, so the rest of the workflow stays the same.",
     whenToUse: [
-      "A class cannot anticipate which concrete product it will need to create.",
-      "You want subclasses or plugins to extend which objects a framework creates.",
-      "The creation logic should be isolated from the business logic that uses the product.",
-      "You expect to add new product variants (e.g. a new notification channel) over time.",
+      "A class does not know in advance which exact object it will need to create.",
+      "You want subclasses or plugins to decide which objects a framework creates.",
+      "You want creation code kept apart from the code that uses the object.",
+      "You expect to add new kinds of objects over time, like a new notification channel.",
     ],
     whenNotToUse: [
-      "There is only one concrete product and no realistic prospect of another.",
-      "A simple constructor call or a static helper is clear enough.",
-      "Introducing a parallel creator hierarchy would add more classes than it saves.",
+      "There is only one kind of object, and there will probably never be another.",
+      "A normal constructor call or a simple helper function is clear enough.",
+      "You would add a whole extra set of creator classes that cost more than they save.",
     ],
     uml: {
       classes: [
@@ -46,18 +45,35 @@ export const LLD_PATTERNS: LLDPattern[] = [
         { from: "SmsCreator", to: "SmsNotification", type: "dependency", label: "creates" },
       ],
     },
-    example:
-      "Python's __iter__() is a factory method: each collection class returns its own iterator object. UI frameworks also use it so each platform's dialog creates its own native buttons.",
+    example: "Python's __iter__() is a factory method. Each collection class returns its own iterator object. UI frameworks also use it, so each platform's dialog creates its own native buttons.",
     advantages: [
-      "Decouples client code from concrete product classes.",
-      "Follows the Open/Closed Principle: add products by adding creators, not editing callers.",
-      "Puts creation code in one place (Single Responsibility).",
-      "Lets frameworks expose extension points for subclasses.",
+      "The calling code does not depend on the exact class being created.",
+      "Follows the Open/Closed Principle (code is open to new features but closed to edits). You add new types by adding new creators, not by changing callers.",
+      "Creation code lives in one place, so each class has one job (Single Responsibility).",
+      "Frameworks can offer clear hooks that subclasses fill in.",
     ],
     disadvantages: [
-      "Can lead to a parallel hierarchy of creator subclasses.",
-      "Adds indirection that can be overkill for simple object creation.",
-      "Subclassing just to change one created type is heavier than passing a function or class reference.",
+      "You may end up with one creator subclass for every product class.",
+      "It adds an extra step, which is too much for simple object creation.",
+      "In Python, making a subclass just to change one created type is heavy. Passing a function or a class as an argument is often simpler.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Factory Method?",
+        a: "I use it when a piece of code needs to create an object, but the exact type should be decided later. For example, a notifier class has a create_notification() method. EmailNotifier returns an email object and SmsNotifier returns an SMS object. The notify_user() logic stays the same for both.",
+      },
+      {
+        q: "What is the difference between Factory Method and Abstract Factory?",
+        a: "Factory Method creates one kind of product, and a subclass decides which version. Abstract Factory creates a whole family of related products, like a button and a checkbox that must match the same theme. You can think of an Abstract Factory as a group of factory methods that belong together.",
+      },
+      {
+        q: "Is Factory Method the same as a simple factory function?",
+        a: "Not exactly. A simple factory is one function with an if/else, like make_notification(kind), that returns the right object. Factory Method uses inheritance: a base class calls a method, and subclasses override it to pick the object. In Python, the simple factory or passing a class as an argument is often enough.",
+      },
+      {
+        q: "Where have you seen Factory Method in Python?",
+        a: "The __iter__() method is a good example. Each collection, like list or dict, returns its own iterator object. The for loop does not care which iterator class it gets, it just calls next() on it.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -111,18 +127,17 @@ if __name__ == "__main__":
     category: "creational",
     intent:
       "Provide an interface for creating families of related or dependent objects without specifying their concrete classes.",
-    problem:
-      "A system must work with several families of products (e.g. light and dark UI widgets) and must never mix products from different families. Hard-coding concrete classes scatters family decisions across the codebase.",
+    problem: "Some systems use groups of objects that must match, like light theme buttons with light theme menus. If you create each class by hand everywhere, it is easy to mix a dark button with a light menu by mistake. Abstract Factory puts each matching group behind one factory, so you always get a consistent set.",
     whenToUse: [
-      "Products come in families that must be used together consistently.",
-      "You want to swap an entire family (theme, platform, vendor) via configuration.",
-      "Client code should depend only on product interfaces, not concrete classes.",
-      "You are building a library and want to reveal only interfaces, not implementations.",
+      "Objects come in families that must always be used together.",
+      "You want to swap a whole family (a theme, a platform, a vendor) with one config change.",
+      "Your code should depend only on interfaces (a list of methods a class promises to have), not on exact classes.",
+      "You are building a library and want to show users only the interfaces, not the real classes.",
     ],
     whenNotToUse: [
-      "There is only one product family, or products are unrelated to each other.",
-      "New product types are added often: each one forces a change to every factory.",
-      "A single Factory Method or simple constructor would do the job.",
+      "There is only one family, or the objects have nothing to do with each other.",
+      "You add new kinds of products often. Each new kind forces a change to every factory.",
+      "A single Factory Method or a plain constructor would do the job.",
     ],
     uml: {
       classes: [
@@ -156,18 +171,35 @@ if __name__ == "__main__":
         { from: "Application", to: "GUIFactory", type: "association", label: "uses" },
       ],
     },
-    example:
-      "Python's DB-API works this way: each driver module (sqlite3, psycopg) hands back its own family of connection and cursor objects. Cross-platform UI toolkits use one factory per OS to create matching native widgets.",
+    example: "Python's DB-API works like this. Each driver module (sqlite3, psycopg) gives you its own matching connection and cursor objects. Cross-platform UI toolkits use one factory per OS to create matching native widgets.",
     advantages: [
-      "Guarantees products from one family are compatible with each other.",
-      "Isolates concrete classes from client code.",
-      "Switching an entire family is a one-line change.",
-      "Keeps creation code for a family in one place.",
+      "Objects from the same family always work well together.",
+      "Your code never needs to name the exact classes it uses.",
+      "Switching a whole family is a one-line change.",
+      "All creation code for one family sits in one place.",
     ],
     disadvantages: [
-      "Adding a new product type requires changing the interface and every concrete factory.",
-      "Introduces many interfaces and classes.",
-      "Can be over-engineering when only one family exists today.",
+      "Adding a new kind of product means changing the interface and every factory.",
+      "It adds many interfaces and classes.",
+      "It is over-engineering if you only have one family today.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Abstract Factory?",
+        a: "I use it when I have families of objects that must match. For example, a LightThemeFactory makes a light button and a light menu, and a DarkThemeFactory makes the dark versions. The app gets one factory at startup and never mixes themes by mistake.",
+      },
+      {
+        q: "What is the main downside of Abstract Factory?",
+        a: "Adding a new kind of product is painful. If I add a create_slider() method, every factory must now implement it. So it works best when the list of product kinds is stable, but new families may be added.",
+      },
+      {
+        q: "Abstract Factory vs Builder?",
+        a: "Abstract Factory creates several related objects, usually in one call each. Builder creates one complex object step by step and returns it at the end. Use Abstract Factory for matching families, and Builder for one object with many options.",
+      },
+      {
+        q: "Where have you seen Abstract Factory in Python?",
+        a: "Database drivers that follow the DB-API are a good example. sqlite3.connect() gives a connection, and that connection gives a matching cursor. If you switch to psycopg, you get a different but matching connection and cursor pair. Your code just calls the same methods.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -248,18 +280,17 @@ if __name__ == "__main__":
     category: "creational",
     intent:
       "Separate the construction of a complex object from its representation so the same step-by-step process can create different configurations.",
-    problem:
-      "Objects with many optional parameters lead to telescoping constructors or half-initialised objects built through setters. You want readable, validated, step-by-step construction that ends in an immutable object.",
+    problem: "Some objects have many optional settings, like a Pizza with size, crust, cheese and ten toppings. A constructor with ten arguments is hard to read, and setting fields one by one can leave a half-built object. Builder lets you set options step by step, check them, and then get one finished object.",
     whenToUse: [
-      "A constructor would need many parameters, especially optional ones.",
-      "You want the finished object to be immutable but built incrementally.",
-      "Construction needs validation across several fields before the object exists.",
-      "The same construction steps should produce different representations.",
+      "A constructor would need many arguments, especially optional ones.",
+      "You want the final object to be immutable (cannot change after creation) but built in steps.",
+      "You need to check several fields together before the object is created.",
+      "The same building steps should be able to produce different versions of the object.",
     ],
     whenNotToUse: [
       "The object has only two or three required fields.",
-      "The language offers named and default arguments that already solve readability (e.g. Python keyword arguments or Kotlin data classes).",
-      "The object is mutable and simple setters are perfectly acceptable.",
+      "Python keyword arguments with default values already make the call easy to read.",
+      "The object is simple and can safely change later, so plain attribute setting is fine.",
     ],
     uml: {
       classes: [
@@ -288,18 +319,35 @@ if __name__ == "__main__":
         { from: "Client", to: "RequestBuilder", type: "dependency", label: "configures" },
       ],
     },
-    example:
-      "argparse.ArgumentParser (add arguments step by step, then parse_args()) and SQLAlchemy's select(...).where(...).order_by(...) are builders.",
+    example: "argparse.ArgumentParser is a builder: you add arguments step by step, then call parse_args(). SQLAlchemy's select(...).where(...).order_by(...) is also a builder.",
     advantages: [
-      "Readable, self-documenting construction with fluent method chaining.",
-      "Produces immutable objects without telescoping constructors.",
-      "Centralises validation in build().",
-      "The same builder steps can produce different variants.",
+      "Building code is easy to read, often with chained method calls.",
+      "You get immutable objects without huge constructors.",
+      "All validation happens in one place, the build() method.",
+      "The same steps can produce different versions of the object.",
     ],
     disadvantages: [
-      "Doubles the number of classes and duplicates field declarations.",
-      "Errors for missing required fields surface at runtime unless the builder enforces them in its constructor.",
-      "Overkill for small objects.",
+      "You need an extra builder class, which often repeats the same fields.",
+      "A missing required field is only caught when the code runs, unless the builder asks for it up front.",
+      "It is too much for small objects.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Builder?",
+        a: "I use it when an object has many optional parts and I want readable, safe creation. For example, QueryBuilder().select('name').where('age > 18').limit(10).build(). Each step is clear, and build() checks everything before returning the final object.",
+      },
+      {
+        q: "Do you really need Builder in Python?",
+        a: "Often no. Python has keyword arguments and default values, and dataclasses make simple objects easy. Builder is still useful when the object is built over several steps, needs validation across fields, or is assembled by different parts of the code.",
+      },
+      {
+        q: "What is the telescoping constructor problem?",
+        a: "It is when you add more and more constructor versions or arguments for optional fields. Calls end up like Pizza(12, True, False, True, None), and nobody knows what each value means. Builder fixes this by giving each option a named step.",
+      },
+      {
+        q: "Builder vs Factory Method?",
+        a: "Factory Method decides which class to create, usually in one call. Builder focuses on how to put together one complex object in many steps. You could even combine them, with a factory that returns the right builder.",
+      },
     ],
     code: {
       python: `from dataclasses import dataclass
@@ -363,18 +411,17 @@ if __name__ == "__main__":
     name: "Singleton",
     category: "creational",
     intent: "Ensure a class has exactly one instance and provide a global point of access to it.",
-    problem:
-      "Some resources (a logger, a configuration registry, a connection pool) must be shared and creating several copies would waste resources or cause inconsistent state. You need controlled, lazy, thread-safe creation of that single instance.",
+    problem: "Some things should exist only once in a program, like a logger, a config registry, or a connection pool. If different parts of the code create their own copies, you waste resources or get settings that disagree. Singleton makes sure only one instance is ever created, and everyone shares it.",
     whenToUse: [
-      "Exactly one instance must coordinate access to a shared resource (logger, config, pool).",
-      "The instance should be created lazily on first use.",
-      "You need strict control over global state that would otherwise be a bare global variable.",
+      "Exactly one object must control a shared resource, like a logger, config or connection pool.",
+      "The object should be created lazily (only when first needed).",
+      "You want tight control over global state instead of using a bare global variable.",
     ],
     whenNotToUse: [
-      "You only want convenient access: dependency injection of a single shared instance is more testable.",
-      "The object holds per-request or per-user state.",
-      "Unit tests need to substitute or reset the instance easily.",
-      "In distributed systems where one instance per process does not mean one instance overall.",
+      "You just want easy access. Passing one shared object into the classes that need it (dependency injection) is easier to test.",
+      "The object holds data for one request or one user.",
+      "Unit tests need to replace or reset the object easily.",
+      "In distributed systems, one instance per process does not mean one instance across all servers.",
     ],
     uml: {
       classes: [
@@ -393,18 +440,35 @@ if __name__ == "__main__":
         { from: "PaymentService", to: "Logger", type: "dependency", label: "getInstance()" },
       ],
     },
-    example:
-      "Python modules are singletons: a module is imported once and cached in sys.modules. logging.getLogger(name) always returns the same logger for a name, and app-wide configuration objects are often singletons.",
+    example: "Python modules are singletons: a module is imported once and then cached in sys.modules. logging.getLogger(name) always returns the same logger for the same name. App-wide config objects are often singletons too.",
     advantages: [
-      "Guarantees a single instance and a well-known access point.",
-      "Lazy initialisation avoids paying the cost until first use.",
-      "Better than a raw global variable because creation is controlled.",
+      "There is only one instance, and everyone knows where to get it.",
+      "Lazy creation means you only pay the cost when it is first used.",
+      "It is safer than a raw global variable because creation is controlled.",
     ],
     disadvantages: [
-      "Introduces hidden global state and hidden dependencies between classes.",
-      "Hard to mock or reset in unit tests.",
-      "Requires care for thread safety (double-checked locking, holder idiom, or enum).",
-      "Violates the Single Responsibility Principle by managing its own lifecycle.",
+      "It creates hidden global state. Classes secretly depend on it.",
+      "It is hard to mock or reset in unit tests.",
+      "With threads, you need care, like a lock, so two threads do not create two instances.",
+      "It breaks the Single Responsibility Principle (one class, one job), because it does its own work and also controls its own creation.",
+    ],
+    interviewQuestions: [
+      {
+        q: "How do you make a Singleton in Python?",
+        a: "The simplest way is a module, because Python imports a module only once. If you need a class, you can override __new__ to store and return one saved instance. With threads, wrap the first creation in a threading.Lock so two threads cannot both create it.",
+      },
+      {
+        q: "Why is Singleton often called an anti-pattern?",
+        a: "It acts like a global variable, so any code can change it from anywhere. Classes that use it hide that dependency, which makes the code harder to understand. It also makes tests hard, because state leaks from one test to the next.",
+      },
+      {
+        q: "What would you use instead of a Singleton?",
+        a: "Usually I create one object at startup and pass it to whoever needs it. This is called dependency injection. You still have only one instance, but tests can easily pass in a fake one.",
+      },
+      {
+        q: "Is a Singleton thread-safe by default?",
+        a: "No. If two threads check 'is there an instance yet?' at the same time, both may create one. You fix this with a lock around the creation, or by creating the instance eagerly at import time.",
+      },
     ],
     code: {
       python: `import threading
@@ -457,18 +521,17 @@ if __name__ == "__main__":
     category: "creational",
     intent:
       "Create new objects by copying an existing, pre-configured instance (the prototype) rather than constructing them from scratch.",
-    problem:
-      "Constructing some objects is expensive or requires lots of configuration, and client code may not even know the concrete class of the object it wants to duplicate. You need a way to copy objects through a common interface.",
+    problem: "Some objects are expensive to create, for example they load files or need lots of setup. Sometimes your code also does not know the exact class of the object it wants to duplicate. Prototype lets you make new objects by copying an existing, already set-up object.",
     whenToUse: [
-      "Creating an object is costly (heavy setup, I/O) and copying is cheaper.",
-      "You need many objects that differ only slightly from a few preset configurations.",
-      "Code must copy objects without depending on their concrete classes.",
-      "You want a registry of ready-made templates that clients clone on demand.",
+      "Creating an object is costly (heavy setup, reading files) and copying is cheaper.",
+      "You need many objects that differ only a little from a few preset versions.",
+      "Your code must copy objects without knowing their exact classes.",
+      "You want a registry (a lookup table) of ready-made templates that code can copy when needed.",
     ],
     whenNotToUse: [
-      "Objects are cheap to construct with a plain constructor.",
-      "Objects hold resources that cannot be meaningfully copied (sockets, file handles, threads).",
-      "The object graph has circular references that make deep copying error-prone.",
+      "Objects are cheap to create with a normal constructor.",
+      "Objects hold things that cannot really be copied, like open sockets, file handles or threads.",
+      "The objects point to each other in loops, which makes deep copying easy to get wrong.",
     ],
     uml: {
       classes: [
@@ -493,18 +556,35 @@ if __name__ == "__main__":
         { from: "ShapeRegistry", to: "Shape", type: "aggregation", label: "prototypes" },
       ],
     },
-    example:
-      "Python's copy.copy() and copy.deepcopy() exist for this purpose. Game engines clone pre-configured enemy or particle templates instead of rebuilding them.",
+    example: "Python's copy.copy() and copy.deepcopy() exist for exactly this. Game engines copy pre-built enemy or particle templates instead of building each one from scratch.",
     advantages: [
-      "Copies objects without coupling to their concrete classes.",
-      "Avoids repeated expensive initialisation.",
-      "Replaces many configuration subclasses with a set of preset instances.",
-      "New variants can be registered at runtime.",
+      "You can copy objects without depending on their exact classes.",
+      "You avoid repeating expensive setup.",
+      "A few preset objects can replace many small subclasses that differ only in settings.",
+      "New presets can be added while the program runs.",
     ],
     disadvantages: [
-      "Deep versus shallow copy must be handled carefully to avoid shared mutable state.",
-      "Cloning objects with circular references or external resources is tricky.",
-      "copy.deepcopy() can copy far more than you intended (and is slow), so an explicit clone() method or __deepcopy__ is often preferred.",
+      "You must choose between shallow and deep copy carefully, or copies may share data they should not share.",
+      "Copying objects with loops or outside resources is tricky.",
+      "copy.deepcopy() can copy much more than you wanted and can be slow. A custom clone() method or __deepcopy__ is often better.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Prototype?",
+        a: "I use it when building an object is slow or complex, and I need many similar ones. For example, in a game I set up one Goblin with its stats and images once. Then each new goblin is a copy, and I only change its position.",
+      },
+      {
+        q: "What is the difference between a shallow copy and a deep copy?",
+        a: "A shallow copy makes a new outer object, but the inner objects are shared. So if the copy has a list inside, changing that list also changes the original. A deep copy copies everything inside too, so the two objects are fully separate.",
+      },
+      {
+        q: "How do you implement Prototype in Python?",
+        a: "Usually with the copy module. copy.copy(obj) gives a shallow copy and copy.deepcopy(obj) gives a deep copy. If you need control, you can define a clone() method or __deepcopy__ to choose what gets copied.",
+      },
+      {
+        q: "What are the risks of Prototype?",
+        a: "The main risk is shared mutable data from a shallow copy, which causes confusing bugs. Another risk is copying things that should not be copied, like a database connection. Deep copies of big objects can also be slow.",
+      },
     ],
     code: {
       python: `import copy
@@ -571,17 +651,16 @@ if __name__ == "__main__":
     category: "structural",
     intent:
       "Convert the interface of a class into another interface clients expect, letting classes work together that otherwise could not because of incompatible interfaces.",
-    problem:
-      "You want to reuse an existing class or third-party SDK, but its interface does not match the one your code depends on, and you cannot or should not modify either side.",
+    problem: "You want to use an existing class or third-party SDK, but its methods do not match what your code expects. For example, your code calls pay(amount), but the vendor SDK has make_payment(cents, currency). Adapter is a small wrapper that translates between the two, so you do not change either side.",
     whenToUse: [
-      "Integrating a third-party or legacy component whose API you cannot change.",
-      "Several vendors expose different APIs and you want one uniform interface.",
-      "Migrating gradually from an old interface to a new one.",
+      "You use a third-party or old component whose API you cannot change.",
+      "Several vendors have different APIs and you want one common interface (a fixed set of methods your code calls).",
+      "You are moving slowly from an old interface to a new one.",
     ],
     whenNotToUse: [
-      "You own both sides and can simply change one interface to match.",
-      "The interfaces already match; a wrapper adds nothing.",
-      "You need to simplify a whole subsystem rather than translate one interface (use Facade).",
+      "You own both sides and can just change one of them to match.",
+      "The interfaces already match, so a wrapper adds nothing.",
+      "You want to simplify a whole subsystem, not translate one interface. Use Facade for that.",
     ],
     uml: {
       classes: [
@@ -611,17 +690,34 @@ if __name__ == "__main__":
         { from: "CheckoutService", to: "PaymentProcessor", type: "association", label: "uses" },
       ],
     },
-    example:
-      "io.TextIOWrapper adapts a binary stream to a text stream, and csv.reader adapts any iterable of lines into rows.",
+    example: "io.TextIOWrapper adapts a binary stream into a text stream. csv.reader adapts any iterable of text lines into rows.",
     advantages: [
-      "Reuses existing code without modifying it.",
-      "Keeps translation logic separate from business logic (Single Responsibility).",
-      "New adapters can be added without touching client code (Open/Closed).",
+      "You reuse existing code without changing it.",
+      "Translation code stays separate from business logic, so each class has one job (Single Responsibility).",
+      "You can add new adapters without touching the code that uses them (Open/Closed Principle: add new code instead of editing old code).",
     ],
     disadvantages: [
-      "Adds an extra class and a level of indirection.",
-      "A large mismatch can make the adapter complex and leaky.",
-      "Too many adapters can hide the fact that interfaces should really be redesigned.",
+      "It adds one more class and one more layer to go through.",
+      "If the two interfaces are very different, the adapter gets complex and may not hide all the differences.",
+      "Too many adapters may hide the fact that the interfaces should be redesigned.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Adapter?",
+        a: "I use it when I need to plug in code with the wrong shape. For example, my app expects a PaymentGateway with pay(amount). The Stripe SDK has a different method. I write StripeAdapter with pay(amount) that calls the Stripe method inside.",
+      },
+      {
+        q: "Adapter vs Facade?",
+        a: "Adapter changes one interface into another interface that the client already expects. Facade creates a new, simpler interface over many classes. Adapter is about making things fit, and Facade is about making things easy.",
+      },
+      {
+        q: "Adapter vs Decorator?",
+        a: "Both wrap an object. An adapter changes the interface but keeps the behaviour. A decorator keeps the same interface but adds new behaviour, like logging or caching.",
+      },
+      {
+        q: "Where have you seen Adapter in Python?",
+        a: "io.TextIOWrapper is a good example. It takes a binary stream that returns bytes and makes it look like a text stream that returns strings. Your code can then read text lines without caring about the bytes underneath.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -672,18 +768,17 @@ if __name__ == "__main__":
     category: "structural",
     intent:
       "Attach additional responsibilities to an object dynamically by wrapping it in objects that share its interface, providing a flexible alternative to subclassing.",
-    problem:
-      "Adding every combination of optional features through subclasses causes a class explosion (MilkCaramelEspresso, DoubleMilkEspresso, ...). You need to add or stack behaviour at runtime without changing the original class.",
+    problem: "Imagine a coffee shop with extras like milk, caramel and extra shots. Making a subclass for every mix (MilkCaramelEspresso, DoubleMilkEspresso, and so on) creates far too many classes. Decorator lets you wrap the coffee in extras one by one, at runtime, without changing the original class.",
     whenToUse: [
-      "Optional features must be combined freely at runtime.",
-      "Extending by subclassing would cause a combinatorial explosion of classes.",
-      "You want to add cross-cutting behaviour (logging, caching, compression) around an object transparently.",
-      "The class to extend is final or comes from a library.",
+      "Optional features must be mixed freely while the program runs.",
+      "Using subclasses for every mix of features would create too many classes.",
+      "You want to add general behaviour like logging, caching or compression around an object without the caller noticing.",
+      "The class you want to extend comes from a library and you cannot or should not change it.",
     ],
     whenNotToUse: [
-      "There is only one fixed extension: a subclass or a simple flag is clearer.",
-      "The order of wrappers matters in subtle ways that make behaviour hard to reason about.",
-      "Clients need to know the concrete type of the object, since wrapping hides it.",
+      "There is only one fixed extra. A subclass or a simple flag is clearer.",
+      "The order of the wrappers changes behaviour in subtle, confusing ways.",
+      "Callers need to know the exact type of the object, because wrapping hides it.",
     ],
     uml: {
       classes: [
@@ -706,19 +801,36 @@ if __name__ == "__main__":
         { from: "Caramel", to: "BeverageDecorator", type: "inheritance" },
       ],
     },
-    example:
-      "Python's I/O stack is decorators: io.BufferedReader(gzip.GzipFile(...)) wraps one stream in another. @functools.lru_cache and HTTP middleware follow the same idea.",
+    example: "Python's I/O stack uses decorators: io.BufferedReader(gzip.GzipFile(...)) wraps one stream in another. @functools.lru_cache and web middleware follow the same idea.",
     advantages: [
-      "Adds behaviour at runtime without modifying or subclassing the original.",
-      "Features can be combined in any order and quantity.",
-      "Each decorator has a single responsibility.",
-      "Avoids a class explosion from feature combinations.",
+      "You add behaviour at runtime without changing or subclassing the original class.",
+      "Features can be combined in any order and any number.",
+      "Each decorator does just one job.",
+      "You avoid a huge number of classes for every mix of features.",
     ],
     disadvantages: [
-      "Many small wrapper objects can make debugging and stack traces harder.",
-      "Removing a specific wrapper from the middle of a stack is awkward.",
-      "Behaviour can depend on wrapping order.",
-      "Object identity checks fail because the decorator is a different object.",
+      "Many small wrapper objects make debugging and stack traces harder to read.",
+      "Removing one wrapper from the middle of a stack is awkward.",
+      "Behaviour can change depending on the wrapping order.",
+      "Identity checks (is) fail because the wrapper is a different object from the original.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use the Decorator pattern?",
+        a: "I use it when I want to add optional features to an object and mix them freely. For example, Milk(Caramel(Espresso())). Each wrapper adds its own cost and description, then calls the object inside. I can stack as many as I want.",
+      },
+      {
+        q: "Is the Decorator pattern the same as a Python @decorator?",
+        a: "They share the same idea but are not the same thing. A Python @decorator wraps a function to add behaviour, like @lru_cache adding caching. The design pattern wraps an object that has the same methods as the original. Both add behaviour without changing the original code.",
+      },
+      {
+        q: "Decorator vs Proxy?",
+        a: "Both wrap an object and keep the same interface. A decorator adds extra features, and you often stack several of them. A proxy controls access to the real object, for example lazy loading or permission checks, and usually there is just one.",
+      },
+      {
+        q: "What are the downsides of Decorator?",
+        a: "You end up with many small objects, which makes debugging harder. The order of wrappers can matter, for example compress then encrypt is different from encrypt then compress. Also, the wrapped object is no longer the same object, so identity checks fail.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -774,17 +886,16 @@ if __name__ == "__main__":
     category: "structural",
     intent:
       "Provide a unified, simplified interface to a set of interfaces in a subsystem, making the subsystem easier to use.",
-    problem:
-      "Clients that orchestrate many subsystem classes directly become tightly coupled to their details and call order. A simple, high-level entry point would hide that complexity.",
+    problem: "Placing an order might need calls to inventory, payment and shipping, in the right order. If every caller does this by hand, they all depend on those details and the order of calls. Facade gives one simple method, like place_order(), that hides all of that.",
     whenToUse: [
-      "A common workflow requires coordinating several subsystem classes in a specific order.",
-      "You want to decouple clients from a complex or frequently changing subsystem.",
-      "You want to define clear entry points into layers of a system.",
+      "A common task needs several subsystem classes to be called in a specific order.",
+      "You want callers to stay independent of a complex subsystem that changes often.",
+      "You want clear entry points into each layer of your system.",
     ],
     whenNotToUse: [
-      "The subsystem is already simple; a facade would just forward calls one-to-one.",
-      "Clients regularly need fine-grained control the facade would hide.",
-      "The facade starts accumulating unrelated responsibilities and becomes a god object.",
+      "The subsystem is already simple, so the facade would just pass calls through one by one.",
+      "Callers often need detailed control that the facade would hide.",
+      "The facade keeps collecting unrelated jobs and turns into a god object (one class that knows and does too much).",
     ],
     uml: {
       classes: [
@@ -804,17 +915,34 @@ if __name__ == "__main__":
         { from: "OrderFacade", to: "ShippingService", type: "association" },
       ],
     },
-    example:
-      "SLF4J offers a simple logging facade over several logging back-ends, and a service-layer method like placeOrder() is a facade over inventory, payment and shipping components.",
+    example: "The requests library is a facade: requests.get(url) hides connection pools, headers and retries handled by lower layers. A service method like place_order() is a facade over inventory, payment and shipping.",
     advantages: [
-      "Simplifies usage of a complex subsystem.",
-      "Reduces coupling between clients and subsystem internals.",
-      "Subsystem classes remain accessible for advanced use cases.",
+      "A complex subsystem becomes simple to use.",
+      "Callers depend less on the subsystem's inner details (lower coupling, meaning less dependence between parts).",
+      "The subsystem classes are still available when someone needs advanced control.",
     ],
     disadvantages: [
-      "Can grow into a god object coupled to every class in the app.",
-      "Adds a layer that must be maintained as the subsystem evolves.",
-      "May hide useful capabilities if it is the only access path.",
+      "It can grow into a god object that depends on every class in the app.",
+      "It is one more layer that must be updated when the subsystem changes.",
+      "It may hide useful features if it is the only way in.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Facade?",
+        a: "I use it when callers need to coordinate many classes to do one common task. For example, an OrderService.place_order() checks stock, charges the card and schedules shipping. The caller makes one call instead of three, and does not need to know the right order.",
+      },
+      {
+        q: "Facade vs Adapter?",
+        a: "Facade makes a new, simpler interface over many classes. Adapter makes one existing class fit an interface the client already expects. So Facade is for simplifying, and Adapter is for translating.",
+      },
+      {
+        q: "Can a Facade become a problem?",
+        a: "Yes. If you keep adding unrelated methods, it becomes a god object that touches everything. Then any change in the system means changing the facade. Keep each facade focused on one area, and still allow direct access to the subsystem when needed.",
+      },
+      {
+        q: "Where have you seen Facade in Python?",
+        a: "The requests library is a good example. requests.get(url) hides sessions, connection pools, encoding and redirects. Most users never touch the lower layers, but they are still there if you need them.",
+      },
     ],
     code: {
       python: `class InventoryService:
@@ -863,18 +991,17 @@ if __name__ == "__main__":
     category: "structural",
     intent:
       "Provide a surrogate or placeholder for another object to control access to it, using the same interface as the real object.",
-    problem:
-      "Direct access to an object may be expensive (lazy loading), remote, or need protection, caching or logging. You want to add that control without changing the real object or its clients.",
+    problem: "Sometimes using an object directly is a problem. It may be slow to load, live on another server, or need permission checks, caching or logging. Proxy is a stand-in object with the same methods that adds this control, without changing the real object or its callers.",
     whenToUse: [
-      "Virtual proxy: defer creating a heavy object until it is actually needed.",
-      "Protection proxy: check permissions before forwarding calls.",
-      "Remote proxy: represent an object that lives in another process or machine.",
-      "Caching or logging proxy: add behaviour around calls transparently.",
+      "Virtual proxy: wait to create a heavy object until it is really needed.",
+      "Protection proxy: check permissions before passing a call on.",
+      "Remote proxy: stand in for an object that lives in another process or on another machine.",
+      "Caching or logging proxy: add caching or logging around calls without callers noticing.",
     ],
     whenNotToUse: [
       "The real object is cheap and needs no access control.",
-      "The extra latency of an indirection layer is unacceptable on a hot path.",
-      "You need to add many stackable features (Decorator fits better).",
+      "The extra delay from one more layer is not acceptable in very hot, performance-critical code.",
+      "You need to stack many optional features. Decorator fits better.",
     ],
     uml: {
       classes: [
@@ -895,17 +1022,34 @@ if __name__ == "__main__":
         { from: "Gallery", to: "Image", type: "aggregation" },
       ],
     },
-    example:
-      "SQLAlchemy lazy-loads relationships behind proxy attributes, unittest.mock.Mock stands in for real objects, and xmlrpc.client.ServerProxy is a remote proxy.",
+    example: "SQLAlchemy lazy-loads related rows behind proxy attributes. unittest.mock.Mock stands in for real objects in tests, and xmlrpc.client.ServerProxy is a remote proxy.",
     advantages: [
-      "Controls access to the real object without clients noticing.",
-      "Enables lazy initialisation, caching, access control and remote access.",
-      "The real object can be swapped or managed independently (Open/Closed).",
+      "It controls access to the real object without callers noticing.",
+      "It makes lazy loading, caching, access control and remote calls possible.",
+      "The real object can be swapped or managed on its own (Open/Closed Principle: add new code instead of editing old code).",
     ],
     disadvantages: [
-      "Adds indirection and potential latency.",
-      "Responses may be delayed or behave unexpectedly (e.g. lazy-load exceptions).",
+      "It adds one more layer and can add delay.",
+      "Results may come late or fail in surprising places, for example an error when lazy loading happens.",
       "More classes to maintain.",
+    ],
+    interviewQuestions: [
+      {
+        q: "What are the common types of Proxy?",
+        a: "A virtual proxy delays creating a heavy object until it is used. A protection proxy checks permissions before passing calls on. A remote proxy hides the fact that the real object is on another machine. A caching proxy saves results so repeated calls are fast.",
+      },
+      {
+        q: "Proxy vs Decorator?",
+        a: "Both wrap an object with the same interface. A proxy is about controlling access, like lazy loading or security, and it often manages the real object itself. A decorator is about adding features, and you usually stack several of them.",
+      },
+      {
+        q: "Give an example of a Proxy you would write.",
+        a: "Say an ImageProxy has the same display() method as a real Image. The proxy stores only the file path at first. When display() is called the first time, it loads the real image and then forwards the call. Code that never displays the image never pays the loading cost.",
+      },
+      {
+        q: "Where have you seen Proxy in Python?",
+        a: "unittest.mock.Mock is a stand-in that records calls instead of doing real work. xmlrpc.client.ServerProxy lets you call methods that actually run on a remote server. SQLAlchemy's lazy relationships load data from the database only when you first access them.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -965,17 +1109,16 @@ if __name__ == "__main__":
     category: "structural",
     intent:
       "Compose objects into tree structures to represent part-whole hierarchies, letting clients treat individual objects and compositions uniformly.",
-    problem:
-      "When data is naturally a tree (files and folders, menus and items), client code fills up with type checks to distinguish leaves from containers. A common interface lets recursive operations work on any node.",
+    problem: "Some data is naturally a tree, like folders that hold files and other folders. Without a shared interface, your code is full of checks like 'is this a file or a folder?'. Composite gives files and folders the same methods, such as size(), so the code can treat any node the same way.",
     whenToUse: [
-      "The domain is a part-whole hierarchy (file systems, org charts, UI widget trees, menus).",
-      "Clients should handle single items and groups through one interface.",
-      "Operations like size, price or render naturally recurse over children.",
+      "Your data is a part-whole tree, like file systems, org charts, UI widgets or menus.",
+      "Callers should handle single items and groups through one interface.",
+      "Operations like size, price or render naturally repeat over the children.",
     ],
     whenNotToUse: [
-      "The structure is flat or has a fixed, shallow depth.",
-      "Leaves and containers have very different interfaces and forcing a common one would be misleading.",
-      "You need strict compile-time rules about which children a node may contain.",
+      "The structure is flat, or always just one or two levels deep.",
+      "Single items and groups behave so differently that one shared interface would be misleading.",
+      "You need strict rules about which children each node may have.",
     ],
     uml: {
       classes: [
@@ -999,17 +1142,34 @@ if __name__ == "__main__":
         { from: "Directory", to: "FileSystemNode", type: "aggregation", label: "children 0..*" },
       ],
     },
-    example:
-      "In Tkinter, a Frame holds other widgets and is itself a widget. Python's ast module (a Module node containing statement nodes) and the browser DOM are composites too.",
+    example: "In Tkinter, a Frame holds other widgets and is also a widget itself. Python's ast module (a Module node that holds statement nodes) and the browser DOM are composites too.",
     advantages: [
-      "Clients treat leaves and composites uniformly, simplifying code.",
-      "Easy to add new node types (Open/Closed).",
-      "Recursive operations over trees become natural and concise.",
+      "Callers treat single items and groups the same way, so code is simpler.",
+      "It is easy to add new node types (Open/Closed Principle: add new code instead of editing old code).",
+      "Recursive operations over the tree become natural and short.",
     ],
     disadvantages: [
-      "A common interface can be too general, e.g. leaves exposing meaningless add() methods.",
-      "Hard to restrict which components may be children of which.",
-      "Deep trees can make recursive operations expensive without caching.",
+      "The shared interface can be too general. For example, a file may have an add() method that makes no sense for it.",
+      "It is hard to limit which items can be children of which.",
+      "In deep trees, recursive operations can be slow unless you cache results.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use Composite?",
+        a: "I use it when data forms a tree and I want to treat one item and a group the same way. For example, File and Folder both have size(). File returns its own size. Folder returns the sum of size() for all its children, so the caller just calls size() on anything.",
+      },
+      {
+        q: "What is the difference between a leaf and a composite?",
+        a: "A leaf is a single item with no children, like a file. A composite is a container that holds children, like a folder. Both share the same interface, and the composite usually passes the work down to its children.",
+      },
+      {
+        q: "What is the main trade-off in Composite?",
+        a: "You choose between safety and simplicity. If add() is on the shared interface, callers are simple, but a leaf has a useless add() method. If add() is only on the composite, it is safer, but callers must check the type before adding children.",
+      },
+      {
+        q: "Composite vs Decorator?",
+        a: "Both use objects that hold other objects with the same interface. Composite holds many children and combines their results, like a folder summing sizes. Decorator wraps exactly one object and adds behaviour to it.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1072,18 +1232,17 @@ if __name__ == "__main__":
     category: "structural",
     intent:
       "Decouple an abstraction from its implementation so that the two can vary independently, connected by composition rather than inheritance.",
-    problem:
-      "When a class varies along two independent dimensions (e.g. remote type and device type), inheritance produces a Cartesian product of subclasses. Splitting the dimensions into two hierarchies linked by a reference keeps both extensible.",
+    problem: "Sometimes a class changes in two separate ways at once. For example, you have remote types (basic, advanced) and device types (TV, radio). With inheritance alone you need a class for every pair, like BasicTVRemote and AdvancedRadioRemote, and the number of classes keeps multiplying. Bridge splits the two into separate groups and links them with a reference, so each group can grow on its own.",
     whenToUse: [
-      "A class varies along two or more orthogonal dimensions.",
-      "You want to switch implementations at runtime.",
-      "Both the abstraction and the implementation should be extensible by subclassing without affecting each other.",
-      "You need to hide platform-specific implementation details from clients.",
+      "A class changes in two or more ways that do not depend on each other.",
+      "You want to switch the implementation (the part that does the real work) while the program runs.",
+      "You want to add new subclasses on either side without breaking the other side.",
+      "You want to hide platform-specific details from the code that uses the class.",
     ],
     whenNotToUse: [
-      "There is only one implementation, and no second dimension of variation.",
-      "The abstraction and implementation are tightly cohesive and always change together.",
-      "Simple composition with a strategy already covers the need.",
+      "There is only one implementation and only one way the class changes.",
+      "The two parts are closely linked and always change together.",
+      "Simply passing in a strategy object already solves the problem.",
     ],
     uml: {
       classes: [
@@ -1110,18 +1269,35 @@ if __name__ == "__main__":
         { from: "Radio", to: "Device", type: "realization" },
       ],
     },
-    example:
-      "Python's DB-API is a bridge: application code uses the same connect()/cursor()/execute() API (abstraction) while each driver provides the implementation. A notification type (alert, digest) sent over different channels (email, SMS) is another common case.",
+    example: "Python's DB-API works like a bridge. Your code always calls connect(), cursor() and execute(), and each database driver does the real work behind them. Sending different message types (alert, daily digest) over different channels (email, SMS) is another common case.",
     advantages: [
-      "Avoids a class explosion from combining two dimensions.",
-      "Abstraction and implementation evolve independently (Open/Closed).",
-      "Implementations can be swapped at runtime.",
-      "Hides implementation details from clients.",
+      "Stops the class explosion you get from combining two dimensions.",
+      "Both sides can grow on their own. This follows the Open/Closed Principle (code is open to new features but closed to edits).",
+      "You can swap the implementation while the program runs.",
+      "The code that uses the class does not see the implementation details.",
     ],
     disadvantages: [
-      "Adds complexity and indirection when there is only one dimension.",
-      "Requires identifying the independent dimensions up front.",
-      "The implementor interface can become a lowest-common-denominator API.",
+      "Adds extra classes and an extra layer when there is only one dimension.",
+      "You must spot the two independent dimensions early in the design.",
+      "The shared implementation interface (the list of methods every implementation must have) may shrink to only what all platforms can support.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use the Bridge pattern?",
+        a: "I use it when a class varies in two separate directions. For example, shapes (circle, square) and renderers (vector, raster). Without Bridge I would need a class for every pair, like VectorCircle and RasterSquare. With Bridge, a Shape holds a Renderer object, so I add new shapes or new renderers on their own.",
+      },
+      {
+        q: "What is the difference between Bridge and Adapter?",
+        a: "Adapter fixes a mismatch after the fact. You have two existing classes that do not fit, and you add a wrapper so they can work together. Bridge is planned up front. You split a design into two parts on purpose so both parts can grow independently. They look similar in code, but the goal is different.",
+      },
+      {
+        q: "How is Bridge different from Strategy?",
+        a: "Both use composition, which means one object holds another and calls it. Strategy is about swapping one algorithm inside a class. Bridge is about splitting a whole class hierarchy into two hierarchies. In Bridge, the abstraction side also has its own subclasses, not just the implementation side.",
+      },
+      {
+        q: "What are the downsides of Bridge?",
+        a: "It adds an extra layer and more classes. If there is really only one dimension of change, that extra layer is just noise. Also, the shared implementation interface can end up very basic, because it can only include what every implementation supports.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1185,18 +1361,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Define a family of algorithms, encapsulate each one, and make them interchangeable so the algorithm can vary independently from the clients that use it.",
-    problem:
-      "A class that picks between algorithms with growing if/else or switch blocks becomes hard to extend and test. Extracting each algorithm behind a common interface lets you add or swap them without touching the context.",
+    problem: "A class that picks an algorithm with a long if/elif chain gets harder to change and test every time you add an option. For example, a parking lot price function with branches for hourly, flat and weekend pricing. Strategy puts each algorithm in its own class or function with the same method, so you can add or swap them without touching the main class.",
     whenToUse: [
-      "Several variants of an algorithm exist (pricing, sorting, routing, matching) and may grow.",
-      "The algorithm must be chosen or changed at runtime.",
-      "You want to replace conditionals that select behaviour with polymorphism.",
-      "Algorithms need to be unit-tested in isolation from the context.",
+      "There are several versions of an algorithm (pricing, sorting, routing, matching), and more may come.",
+      "The algorithm must be chosen or changed while the program runs.",
+      "You want to replace if/elif chains that choose behaviour with separate classes that share a method.",
+      "You want to test each algorithm on its own, away from the class that uses it.",
     ],
     whenNotToUse: [
-      "There are only one or two algorithms that rarely change.",
-      "A simple function or lambda parameter is enough, and a class hierarchy adds noise.",
-      "Clients should not need to know about or choose among the strategies.",
+      "There are only one or two algorithms, and they rarely change.",
+      "Passing a simple function or lambda is enough, and extra classes would only add noise.",
+      "The caller should not need to know about, or pick from, the different options.",
     ],
     uml: {
       classes: [
@@ -1218,18 +1393,35 @@ if __name__ == "__main__":
         { from: "ParkingFeeCalculator", to: "PricingStrategy", type: "aggregation", label: "delegates to" },
       ],
     },
-    example:
-      "The key= function passed to sorted() is a strategy. Parking lots switching between hourly, flat and weekend pricing, or ride-sharing apps choosing a fare or matching algorithm, are classic uses.",
+    example: "The key= function you pass to sorted() is a strategy. A parking lot that switches between hourly, flat and weekend pricing, or a ride app that picks a fare or matching algorithm, are classic uses.",
     advantages: [
-      "Swap algorithms at runtime without changing the context.",
-      "Eliminates conditional logic for selecting behaviour.",
-      "New strategies can be added without modifying existing code (Open/Closed).",
-      "Each algorithm is isolated and easy to test.",
+      "You can swap the algorithm while the program runs, without changing the main class.",
+      "Removes long if/elif chains that choose behaviour.",
+      "New strategies are added without editing old code. This follows the Open/Closed Principle (open to new features, closed to edits).",
+      "Each algorithm lives on its own and is easy to test.",
     ],
     disadvantages: [
-      "Clients must be aware of the different strategies to choose one.",
-      "Increases the number of classes for small algorithms.",
-      "Strategies may need data from the context, which can widen interfaces.",
+      "The caller must know the different strategies to pick the right one.",
+      "Adds more classes, even for tiny algorithms.",
+      "A strategy may need data from the main class, so you may end up passing a lot of arguments.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use the Strategy pattern?",
+        a: "I use it when I have several ways to do the same job and want to pick one at runtime. A good example is payment: card, UPI or wallet. Each one is a separate strategy with a pay() method. The checkout code just calls strategy.pay(amount) and does not care which one it is.",
+      },
+      {
+        q: "Strategy vs State: what is the difference?",
+        a: "The code structure looks almost the same. In Strategy, the caller picks the algorithm and it usually stays fixed. In State, the object changes its own state object as things happen, like a vending machine moving from idle to has-coin. So Strategy is about choosing how to do something, and State is about behaviour that changes as the object moves through stages.",
+      },
+      {
+        q: "Do you need classes for Strategy in Python?",
+        a: "Not always. Python functions are objects, so you can just pass a function. For example, sorted(items, key=lambda x: x.price) uses a function as the strategy. I use classes only when the strategy needs its own data or several methods.",
+      },
+      {
+        q: "What are the downsides of Strategy?",
+        a: "You get more small classes or functions to manage. The caller must also know which strategy to choose, so that choice logic has to live somewhere, often in a factory. For just two simple options, a plain if statement is usually clearer.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1288,18 +1480,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Define a one-to-many dependency between objects so that when one object (the subject) changes state, all its dependents (observers) are notified automatically.",
-    problem:
-      "Several objects need to react when another object changes, but hard-wiring the subject to each of them creates tight coupling and makes adding new reactions painful. Polling for changes is wasteful.",
+    problem: "Several objects need to react when one object changes. For example, when an order status changes, you must send an email, an SMS and a push notice. If the order class calls each of these directly, it is tightly coupled (strongly tied) to all of them, and every new reaction means editing the order class. Checking for changes in a loop (polling) wastes work.",
     whenToUse: [
-      "A change in one object must trigger updates in an open-ended set of others.",
-      "Subscribers should be added or removed at runtime.",
-      "The subject should not know the concrete classes of its listeners.",
-      "Building event systems, UI data binding, or notification fan-out.",
+      "A change in one object must update many other objects, and that list can grow.",
+      "Listeners should be able to subscribe or unsubscribe while the program runs.",
+      "The main object should not need to know the exact classes of its listeners.",
+      "You are building event systems, UI updates or notification fan-out (one event sent to many places).",
     ],
     whenNotToUse: [
-      "There is exactly one fixed dependent; a direct call is simpler.",
-      "Notification order or delivery guarantees matter (use a queue or explicit orchestration).",
-      "Cascading updates between observers would become hard to trace and debug.",
+      "There is exactly one fixed listener. A direct call is simpler.",
+      "The order of notifications or guaranteed delivery matters. Use a queue or explicit steps instead.",
+      "Listeners would trigger other listeners in chains that are hard to follow and debug.",
     ],
     uml: {
       classes: [
@@ -1326,19 +1517,36 @@ if __name__ == "__main__":
         { from: "SmsNotifier", to: "Observer", type: "realization" },
       ],
     },
-    example:
-      "GUI callbacks (Tkinter's bind, addEventListener in the DOM), Django signals and reactive libraries like RxPY are built on Observer. An order-status change fanning out to email, SMS and push notifiers is a typical LLD use.",
+    example: "GUI callbacks (Tkinter's bind, addEventListener in the browser), Django signals and libraries like RxPY are built on Observer. A typical LLD case is an order status change that is sent to email, SMS and push notifiers.",
     advantages: [
-      "Loose coupling: the subject knows only the observer interface.",
-      "New observers can be added without changing the subject (Open/Closed).",
-      "Supports dynamic subscription at runtime.",
-      "Natural fit for event-driven designs.",
+      "Loose coupling (objects are only lightly tied). The subject only knows that listeners have an update method.",
+      "New listeners can be added without changing the subject. This follows the Open/Closed Principle (open to new features, closed to edits).",
+      "Listeners can subscribe and unsubscribe at runtime.",
+      "A natural fit for event-driven designs.",
     ],
     disadvantages: [
-      "Notification order is usually unspecified.",
-      "Forgotten subscriptions cause memory leaks (lapsed listener problem).",
-      "Cascading or cyclic updates can be hard to debug.",
-      "Synchronous notification means one slow observer blocks the rest.",
+      "The order in which listeners are told is usually not defined.",
+      "If you forget to unsubscribe, old listeners stay in memory. This is a memory leak, called the lapsed listener problem.",
+      "Chains or loops of updates between listeners can be hard to debug.",
+      "If notifications run one after another, one slow listener holds up all the others.",
+    ],
+    interviewQuestions: [
+      {
+        q: "Explain the Observer pattern with an example.",
+        a: "One object, called the subject, keeps a list of listeners, called observers. When something changes, it loops over the list and calls each observer's update method. For example, a YouTube channel notifies all subscribers when a new video is uploaded. The channel does not care who the subscribers are.",
+      },
+      {
+        q: "Observer vs Pub/Sub: what is the difference?",
+        a: "In Observer, the subject holds direct references to its observers and calls them itself. In Pub/Sub, there is a message broker in the middle, like Kafka or Redis. Publishers and subscribers do not know about each other at all. Pub/Sub is often asynchronous and works across services, while Observer is usually in one program.",
+      },
+      {
+        q: "What problems can Observer cause?",
+        a: "Memory leaks are common if observers never unsubscribe, because the subject keeps them alive. The order of notifications is not guaranteed. Also, if notifications are synchronous, one slow observer delays all the others. In Python, a weakref.WeakSet can help with the memory leak issue.",
+      },
+      {
+        q: "Where have you seen Observer in Python?",
+        a: "Django signals like post_save are Observer. You connect a receiver function, and Django calls it every time a model is saved. GUI event handlers in Tkinter and reactive libraries like RxPY also follow this pattern.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1400,18 +1608,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Encapsulate a request as an object, letting you parameterise clients with different requests, queue or log requests, and support undoable operations.",
-    problem:
-      "When the code that triggers an action (a button, a scheduler, an elevator panel) is hard-wired to the code that performs it, you cannot queue, log, retry or undo actions. Turning each request into an object decouples the invoker from the receiver.",
+    problem: "When the code that starts an action is wired straight to the code that does it, you cannot queue, log, retry or undo that action. For example, a text editor button that calls document.delete() directly has no way to undo the delete. Command turns each request into an object, so it can be stored, passed around and reversed.",
     whenToUse: [
-      "You need undo/redo or an operation history.",
-      "Requests should be queued, scheduled, retried or executed remotely.",
-      "UI elements or triggers should be configurable with different actions.",
-      "You want to log operations so they can be replayed after a crash.",
+      "You need undo/redo or a history of operations.",
+      "Requests should be queued, scheduled, retried or run on another machine.",
+      "Buttons or triggers should be set up with different actions.",
+      "You want to log operations so you can replay them after a crash.",
     ],
     whenNotToUse: [
       "Actions are simple direct calls with no need for queuing, logging or undo.",
-      "A plain callback or lambda already provides enough decoupling.",
-      "Creating a class per operation would bloat a small codebase.",
+      "A plain callback or lambda already keeps things separate enough.",
+      "Making one class per operation would bloat a small codebase.",
     ],
     uml: {
       classes: [
@@ -1434,18 +1641,35 @@ if __name__ == "__main__":
         { from: "RemoteControl", to: "Command", type: "aggregation", label: "history" },
       ],
     },
-    example:
-      "A callable submitted to concurrent.futures.ThreadPoolExecutor is a command, and text editors implement undo/redo by keeping a stack of command objects. Elevator floor requests can be modelled as queued commands.",
+    example: "A function you submit to concurrent.futures.ThreadPoolExecutor is a command. Text editors do undo/redo by keeping a stack of command objects. Elevator floor requests can be modelled as a queue of commands.",
     advantages: [
-      "Decouples the object that invokes an operation from the one that performs it.",
-      "Enables undo/redo, queuing, scheduling and logging of operations.",
-      "Simple commands can be composed into macro commands.",
+      "Separates the object that starts an action from the object that does the work.",
+      "Makes undo/redo, queuing, scheduling and logging possible.",
+      "Small commands can be combined into a bigger macro command.",
       "New commands can be added without changing existing code.",
     ],
     disadvantages: [
-      "Adds a class for every operation, increasing code volume.",
-      "Undo requires storing enough state to reverse each action, which can be complex.",
-      "Indirection can make the control flow harder to follow.",
+      "You add a class for every operation, so there is more code.",
+      "Undo needs enough saved data to reverse each action, which can get complex.",
+      "The extra layer can make the flow of the program harder to follow.",
+    ],
+    interviewQuestions: [
+      {
+        q: "How would you implement undo/redo with the Command pattern?",
+        a: "Each command has execute() and undo() methods. When a command runs, I push it on an undo stack. To undo, I pop it, call undo(), and push it on a redo stack. Any new command clears the redo stack. For example, an InsertTextCommand remembers the position and text so its undo can remove them.",
+      },
+      {
+        q: "Command vs Strategy: what is the difference?",
+        a: "Both wrap behaviour in an object. Strategy is about how to do one job, with interchangeable algorithms for the same task. Command is about what to do, as a request object that can be stored, queued or undone. A command usually holds its receiver and arguments, ready to run later.",
+      },
+      {
+        q: "Do you need Command classes in Python?",
+        a: "For simple cases, no. A function or functools.partial already works as a command you can store and call later. I use command classes when I need extra things like undo(), a name for logging, or saved state.",
+      },
+      {
+        q: "What are the main parts of the Command pattern?",
+        a: "There is the Command with an execute method. The Receiver is the object that does the real work. The Invoker is what triggers the command, like a button or a queue. The Client creates the command and connects it to the receiver. This split lets the invoker run any command without knowing what it does.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1526,18 +1750,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Allow an object to alter its behaviour when its internal state changes, so the object appears to change its class.",
-    problem:
-      "Objects that behave differently per state (idle, has coin, sold out) often grow large switch statements repeated in every method, and adding a state means editing all of them. Moving each state's behaviour into its own class localises the rules and transitions.",
+    problem: "Some objects behave differently in each state. A vending machine can be idle, have a coin, or be sold out. Often every method gets a big if/elif on the state, and adding a new state means editing all of them. State moves each state's behaviour into its own class, so the rules for each state live in one place.",
     whenToUse: [
-      "An object's behaviour depends on its state and it has several well-defined states.",
-      "Methods contain large conditionals that switch on the same state field.",
-      "State transitions have rules that should be explicit and testable.",
-      "Modelling finite state machines such as vending machines, elevators, ATMs or order lifecycles.",
+      "An object's behaviour depends on its state, and it has several clear states.",
+      "Many methods have big if/elif blocks that check the same state field.",
+      "The rules for moving between states should be clear and testable.",
+      "You are modelling state machines (systems that move between fixed stages), like vending machines, elevators, ATMs or order lifecycles.",
     ],
     whenNotToUse: [
-      "There are only two or three states with trivial behaviour; a simple enum and switch is clearer.",
-      "States rarely change and transition rules are simple.",
-      "The state machine is better expressed declaratively with a transition table.",
+      "There are only two or three states with simple behaviour. An enum with a few if checks is clearer.",
+      "States rarely change and the rules for moving between them are simple.",
+      "A transition table (a lookup of state plus event to next state) describes the machine better.",
     ],
     uml: {
       classes: [
@@ -1565,18 +1788,35 @@ if __name__ == "__main__":
         { from: "State", to: "VendingMachine", type: "dependency", label: "transitions" },
       ],
     },
-    example:
-      "A vending machine that accepts coins only when idle and dispenses only after payment, or a TCP connection that behaves differently when listening, established or closed.",
+    example: "A vending machine that takes coins only when idle, and gives a product only after payment. A TCP connection that acts differently when listening, open or closed is another example.",
     advantages: [
-      "Eliminates sprawling state conditionals.",
-      "Each state's behaviour and transitions live in one class (Single Responsibility).",
-      "New states can be added without modifying existing ones (Open/Closed).",
-      "Makes transitions explicit and easy to test.",
+      "Removes big if/elif blocks that check the state.",
+      "Each state's behaviour and moves live in one class. This follows the Single Responsibility Principle (each class has one job).",
+      "New states can be added without editing old ones. This follows the Open/Closed Principle (open to new features, closed to edits).",
+      "State changes are clear and easy to test.",
     ],
     disadvantages: [
-      "Increases the number of classes.",
-      "Transition logic is spread across state classes, so the overall machine is harder to see at a glance.",
-      "Overkill for a handful of simple states.",
+      "Adds more classes.",
+      "The rules for moving between states are spread across many classes, so the whole machine is harder to see at once.",
+      "Too much for a few simple states.",
+    ],
+    interviewQuestions: [
+      {
+        q: "When would you use the State pattern?",
+        a: "I use it when an object has clear stages and acts differently in each one. A vending machine is the classic case: idle, has coin, dispensing, sold out. Each state is a class with methods like insert_coin() and select_item(). The machine just forwards calls to its current state object.",
+      },
+      {
+        q: "State vs Strategy: what is the difference?",
+        a: "The structure is almost the same: a context holds an object and forwards calls to it. In Strategy, the client usually picks the strategy once. In State, the state objects switch the context to the next state themselves. Also, states usually know about each other, while strategies are independent.",
+      },
+      {
+        q: "Who should change the state, the context or the state classes?",
+        a: "Both work. If the state classes change it, each state knows its own next step, which keeps rules local but spreads them out. If the context changes it, all rules sit in one place, which is easier to read. For interviews, letting state classes call context.set_state() is the common answer.",
+      },
+      {
+        q: "What are the downsides of the State pattern?",
+        a: "You get one class per state, so small machines become heavy. The transition rules are scattered, so it is hard to see the whole machine at once. For simple cases, an Enum plus a dict that maps (state, event) to the next state is often cleaner.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1650,18 +1890,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Avoid coupling the sender of a request to its receiver by giving more than one object a chance to handle it. Handlers are linked in a chain and the request is passed along until handled or rejected.",
-    problem:
-      "A request must go through a series of checks or possible handlers (authentication, rate limiting, validation, log levels, banknote denominations), and hard-coding that sequence in one place makes it rigid. You want to add, remove or reorder steps independently.",
+    problem: "A request often has to pass through a series of checks, like login check, rate limit and input validation. If you hard-code that sequence in one big function, it is hard to change. Chain of Responsibility puts each check in its own handler and links them, so you can add, remove or reorder steps easily.",
     whenToUse: [
-      "Several objects may handle a request and the handler is not known in advance.",
-      "A request must pass through an ordered pipeline of checks or processing steps.",
-      "The set or order of handlers should be configurable at runtime.",
-      "Examples: middleware, approval workflows, log-level filtering, ATM note dispensing.",
+      "Several objects might handle a request, and you do not know which one ahead of time.",
+      "A request must pass through an ordered list of checks or processing steps.",
+      "The handlers or their order should be set up while the program runs.",
+      "Examples include web middleware, approval workflows, log-level filtering and ATM note dispensing.",
     ],
     whenNotToUse: [
-      "There is a single handler, or the order never changes.",
-      "Every request must be guaranteed a handler and silent drop-off would be dangerous.",
-      "Long chains would add unacceptable latency or make debugging hard.",
+      "There is only one handler, or the order never changes.",
+      "Every request must be handled, and a request silently falling off the end would be dangerous.",
+      "A long chain would be too slow or too hard to debug.",
     ],
     uml: {
       classes: [
@@ -1689,17 +1928,34 @@ if __name__ == "__main__":
         { from: "Handler", to: "Request", type: "dependency", label: "handles" },
       ],
     },
-    example:
-      "Django and WSGI middleware form a chain of responsibility, as do logging frameworks that pass a record from DEBUG to INFO to ERROR handlers. An ATM dispensing 100s, then 50s, then 20s is a classic exercise.",
+    example: "Django and WSGI middleware form a chain of responsibility. So do logging tools that pass a record through DEBUG, INFO and ERROR handlers. An ATM that pays out 100s, then 50s, then 20s is a classic exercise.",
     advantages: [
-      "Decouples the sender from concrete handlers.",
-      "Handlers can be added, removed or reordered without changing others (Open/Closed).",
-      "Each handler has a single responsibility.",
+      "The sender does not need to know which handler deals with the request.",
+      "Handlers can be added, removed or reordered without changing the others. This follows the Open/Closed Principle (open to new features, closed to edits).",
+      "Each handler does one job.",
     ],
     disadvantages: [
-      "A request may reach the end of the chain unhandled.",
-      "Debugging requires tracing the request through many objects.",
-      "Long chains add latency, and misconfigured chains can create cycles.",
+      "A request may reach the end of the chain without being handled.",
+      "Debugging means following the request through many objects.",
+      "Long chains add delay, and a badly set up chain can loop forever.",
+    ],
+    interviewQuestions: [
+      {
+        q: "Explain Chain of Responsibility with an example.",
+        a: "Each handler has a reference to the next handler. It either handles the request, stops it, or passes it on. For example, in a leave approval system, a team lead approves up to 2 days, a manager up to 10, and a director anything more. The request moves up the chain until someone can approve it.",
+      },
+      {
+        q: "Where do you see this pattern in real Python code?",
+        a: "Django middleware is the best known example. Each middleware gets the request, can reject it or change it, and then calls the next one. Python's logging module also passes records to handlers and up to parent loggers.",
+      },
+      {
+        q: "What happens if no handler handles the request?",
+        a: "By default it just falls off the end, which can hide bugs. A good design adds a final default handler at the end of the chain. That handler can return an error, raise an exception or log a warning.",
+      },
+      {
+        q: "Chain of Responsibility vs Decorator: what is the difference?",
+        a: "They look similar because both link objects together. A decorator always passes the call on and adds extra behaviour around it. A chain handler can decide to stop the request and not pass it on. So the chain is about who handles a request, while a decorator is about adding features.",
+      },
     ],
     code: {
       python: `from collections import defaultdict
@@ -1771,18 +2027,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Define the skeleton of an algorithm in a base-class method, deferring some steps to subclasses. Subclasses redefine certain steps without changing the algorithm's structure.",
-    problem:
-      "Several classes implement nearly the same algorithm with small variations, leading to duplicated code that drifts apart over time. You want the invariant steps written once and only the varying steps overridden.",
+    problem: "Sometimes several classes run almost the same steps with small differences. For example, CSV, JSON and XML report exporters all open a file, write a header, write rows and close the file. Copying that flow into each class leads to duplicate code that slowly drifts apart. Template Method writes the shared steps once in a base class, and subclasses only fill in the steps that differ.",
     whenToUse: [
-      "Multiple classes share an algorithm whose overall structure is fixed but some steps vary.",
-      "You want to enforce the order of steps while allowing customisation.",
-      "Frameworks need hooks where users plug in behaviour (setup, teardown, onStart).",
-      "Game loops with a fixed turn sequence but game-specific rules.",
+      "Several classes share the same overall steps, but some steps differ.",
+      "You want to force a fixed order of steps but still allow changes to some of them.",
+      "A framework needs hooks (empty methods that users can override), like setup, teardown or on_start.",
+      "Game loops that have a fixed turn order but rules that differ per game.",
     ],
     whenNotToUse: [
-      "The variations are large enough that the shared skeleton is mostly empty.",
-      "Steps need to be swapped at runtime or combined freely (prefer Strategy and composition).",
-      "Deep inheritance hierarchies already make the code hard to follow.",
+      "The differences are so big that the shared outline is almost empty.",
+      "Steps need to be swapped while the program runs, or mixed freely. Prefer Strategy and composition (holding objects instead of inheriting).",
+      "Deep inheritance trees already make the code hard to follow.",
     ],
     uml: {
       classes: [
@@ -1811,18 +2066,35 @@ if __name__ == "__main__":
         { from: "HtmlReport", to: "ReportGenerator", type: "inheritance" },
       ],
     },
-    example:
-      "collections.abc.Sequence implements most list methods on top of your __getitem__() and __len__(), and unittest.TestCase's setUp/test/tearDown lifecycle is a template method. Board games share a play-turn loop with game-specific move rules.",
+    example: "collections.abc.Sequence gives you most list methods once you write __getitem__() and __len__(). The setUp, test and tearDown lifecycle in unittest.TestCase is also a template method. Board games share a play-turn loop but have their own move rules.",
     advantages: [
-      "Removes duplication by placing invariant steps in one place.",
-      "Enforces a consistent algorithm structure.",
-      "Hooks give controlled extension points.",
+      "Removes duplicate code by putting the shared steps in one place.",
+      "Keeps the order of steps the same in every subclass.",
+      "Hooks give safe, controlled places to add custom behaviour.",
     ],
     disadvantages: [
-      "Relies on inheritance, which couples subclasses tightly to the base class.",
-      "Subclasses can only vary the steps the base class exposes.",
-      "Can violate the Liskov Substitution Principle if a subclass suppresses a step.",
-      "Following control flow between base and subclass can be confusing (the Hollywood principle).",
+      "It depends on inheritance, so subclasses are tightly tied to the base class.",
+      "Subclasses can only change the steps the base class allows.",
+      "It can break the Liskov Substitution Principle (a subclass should work anywhere its parent works) if a subclass skips a step.",
+      "The flow jumps between base class and subclass, which can be confusing. This is called the Hollywood principle: do not call us, we will call you.",
+    ],
+    interviewQuestions: [
+      {
+        q: "Explain the Template Method pattern.",
+        a: "The base class has one method that runs the steps in a fixed order. Some steps are written in the base class. Others are left for subclasses to fill in. For example, a DataExporter.export() method calls open(), write_header(), write_rows() and close(), and a CSVExporter only overrides write_header and write_rows.",
+      },
+      {
+        q: "Template Method vs Strategy: which would you choose?",
+        a: "Template Method uses inheritance, and you pick the behaviour by choosing a subclass. Strategy uses composition, and you pass in an object that can be swapped at runtime. I prefer Strategy when the varying part must change at runtime or be mixed and matched. Template Method is fine when the outline is fixed and there are only a few variants.",
+      },
+      {
+        q: "What is a hook method?",
+        a: "A hook is a step in the template that has a default, often empty, version in the base class. Subclasses can override it if they want, but they do not have to. For example, setUp() in unittest.TestCase does nothing by default, but you can override it to prepare test data.",
+      },
+      {
+        q: "Where is Template Method used in Python?",
+        a: "unittest.TestCase is a common example: the framework calls setUp, then your test method, then tearDown. collections.abc classes like Sequence also use it. You write __getitem__ and __len__, and you get methods like __contains__, index and count for free.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod
@@ -1884,18 +2156,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Provide a way to access the elements of an aggregate object sequentially without exposing its underlying representation.",
-    problem:
-      "Clients that traverse a collection by reaching into its internal array, list or tree become coupled to that structure. You also may want several traversal orders, or several traversals in progress at once.",
+    problem: "If code loops over a collection by reaching into its inner list, array or tree, that code breaks when the inner structure changes. For example, if a Playlist stores songs in a list and you later switch to a linked list, every loop must change. You may also want different ways to walk the data, or several loops running at the same time. Iterator gives one standard way to walk through items without seeing how they are stored.",
     whenToUse: [
-      "A collection has a complex internal structure that clients should not depend on.",
-      "You need multiple traversal strategies (forward, reverse, filtered, tree orders).",
-      "Several independent traversals must run concurrently over the same collection.",
-      "You want custom collections to work with the language's for-each loop.",
+      "A collection has a complex inner structure that other code should not depend on.",
+      "You need several ways to walk the data (forward, reverse, filtered, tree orders).",
+      "Several separate loops must run over the same collection at the same time.",
+      "You want your own collection classes to work in a normal Python for loop.",
     ],
     whenNotToUse: [
-      "The collection is a simple built-in list and its native iteration already suffices.",
-      "Random access by index is the main access pattern.",
-      "Writing a custom iterator class would duplicate what the language already provides (e.g. a generator).",
+      "The collection is a simple built-in list, and normal looping is enough.",
+      "You mostly need to jump to items by index.",
+      "A full iterator class would just repeat what Python already gives you, such as a generator.",
     ],
     uml: {
       classes: [
@@ -1918,18 +2189,35 @@ if __name__ == "__main__":
         { from: "Playlist", to: "ReverseIterator", type: "dependency", label: "creates" },
       ],
     },
-    example:
-      "Python's for loop is built on it: __iter__ returns an iterator and __next__ yields items until StopIteration. Generators are the shortest way to write one.",
+    example: "Python's for loop is built on this pattern. __iter__ returns an iterator, and __next__ gives items one by one until it raises StopIteration. Generators (functions that use yield) are the shortest way to write one.",
     advantages: [
-      "Hides the collection's internal structure (encapsulation).",
-      "Supports multiple traversal algorithms and simultaneous traversals.",
-      "Gives a uniform interface for traversing different collections.",
-      "Lets custom collections plug into language loops.",
+      "Hides how the collection stores its data. This is called encapsulation.",
+      "Supports different ways to walk the data, and several walks at the same time.",
+      "Gives one common way to loop over different kinds of collections.",
+      "Lets your own collections work with Python's for loop.",
     ],
     disadvantages: [
-      "Overkill for simple collections with built-in iteration.",
-      "Can be less efficient than direct indexed access.",
-      "Modifying the collection during iteration needs explicit handling (fail-fast checks).",
+      "Too much for simple collections that already support looping.",
+      "Can be slower than reading items directly by index.",
+      "Changing the collection while looping over it needs special care, such as checks that raise an error right away.",
+    ],
+    interviewQuestions: [
+      {
+        q: "How does iteration work in Python?",
+        a: "A for loop first calls iter() on the object, which calls __iter__ and returns an iterator. Then it calls next() again and again, which calls __next__. When there are no more items, __next__ raises StopIteration and the loop ends. Any object that follows these rules works in a for loop.",
+      },
+      {
+        q: "What is the difference between an iterable and an iterator?",
+        a: "An iterable is something you can loop over, like a list. It has __iter__ and can give you a fresh iterator each time. An iterator is the object that keeps track of the current position and has __next__. A list is iterable but not an iterator, while a generator is both.",
+      },
+      {
+        q: "Why use a generator instead of an iterator class?",
+        a: "A generator is much shorter. You write a function with yield, and Python creates __iter__ and __next__ for you. It also saves memory, because it produces items one at a time instead of building a full list. For example, reading a huge file line by line with a generator uses very little memory.",
+      },
+      {
+        q: "What happens if you change a collection while iterating over it?",
+        a: "It can cause bugs, like skipped items. In Python, changing the size of a dict during a loop raises RuntimeError. A list does not raise an error, but removing items while looping can skip elements. The safe way is to loop over a copy, or build a new collection.",
+      },
     ],
     code: {
       python: `from collections.abc import Iterator
@@ -1993,18 +2281,17 @@ if __name__ == "__main__":
     category: "behavioral",
     intent:
       "Define an object that encapsulates how a set of objects interact, promoting loose coupling by keeping objects from referring to each other explicitly.",
-    problem:
-      "When many components talk to each other directly, the web of references becomes a tangled many-to-many graph that is hard to change or reuse. Routing communication through a central mediator turns it into simple one-to-many links.",
+    problem: "When many objects talk to each other directly, every object holds references to many others. This creates a tangled web that is hard to change or reuse. For example, in a chat app, if each user sends messages straight to every other user, adding one user touches everyone. Mediator puts one central object in the middle, so each object only talks to the mediator.",
     whenToUse: [
-      "Many objects communicate in complex ways and direct references between them are tangled.",
-      "You want to reuse components that would otherwise depend on many peers.",
+      "Many objects talk to each other in complex ways, and the direct links are tangled.",
+      "You want to reuse objects that would otherwise depend on many others.",
       "Coordination logic (routing, matching, dispatching) should live in one place.",
-      "Examples: chat rooms, air-traffic control, an elevator dispatcher, rider-driver matching.",
+      "Examples include chat rooms, air-traffic control, an elevator dispatcher and matching riders with drivers.",
     ],
     whenNotToUse: [
       "Only two or three objects interact in simple ways.",
-      "The mediator would absorb so much logic that it becomes a god object.",
-      "Interactions are simple broadcasts that Observer handles more naturally.",
+      "The mediator would take on so much logic that it becomes a god object (one huge class that does everything).",
+      "The objects only need simple broadcasts, which Observer handles more naturally.",
     ],
     uml: {
       classes: [
@@ -2033,17 +2320,34 @@ if __name__ == "__main__":
         { from: "User", to: "ChatMediator", type: "association", label: "talks via" },
       ],
     },
-    example:
-      "An air-traffic control tower coordinates planes so they never negotiate with each other directly. asyncio's event loop and MVC controllers coordinating views also act as mediators.",
+    example: "An air-traffic control tower guides planes, so planes never talk to each other directly. Python's asyncio event loop and MVC controllers that coordinate views also act as mediators.",
     advantages: [
-      "Reduces many-to-many coupling to one-to-many.",
-      "Centralises interaction logic, making it easier to understand and change.",
-      "Components become easier to reuse and test in isolation.",
+      "Turns many-to-many links into simple one-to-many links.",
+      "Puts the interaction logic in one place, so it is easier to understand and change.",
+      "Objects become easier to reuse and to test on their own.",
     ],
     disadvantages: [
-      "The mediator can grow into a complex god object.",
-      "Becomes a single point of failure and potential bottleneck.",
-      "Moves complexity rather than eliminating it.",
+      "The mediator can grow into a complex god object (one huge class that does everything).",
+      "It becomes a single point of failure and can slow things down if everything goes through it.",
+      "It moves complexity to one place rather than removing it.",
+    ],
+    interviewQuestions: [
+      {
+        q: "Explain the Mediator pattern with an example.",
+        a: "Instead of objects talking to each other directly, they all talk to one central mediator. A chat room is a good example. A user calls room.send(message), and the room decides who receives it. Users do not need references to each other, so adding or removing a user is easy.",
+      },
+      {
+        q: "Mediator vs Observer: what is the difference?",
+        a: "Observer is one-way: a subject broadcasts changes to listeners that it does not really know. Mediator is two-way coordination: objects send messages to the mediator, and it decides what to do and who to call. A mediator usually contains real logic, like matching a rider to a driver. In practice a mediator is often built using Observer inside.",
+      },
+      {
+        q: "Mediator vs Facade: what is the difference?",
+        a: "A Facade gives the outside world one simple entry point to a complex subsystem, and the parts inside do not know about it. A Mediator sits between peer objects, and those objects do know about it and talk through it. So Facade simplifies access from outside, while Mediator organises communication between parts.",
+      },
+      {
+        q: "What are the risks of using a Mediator?",
+        a: "The biggest risk is that the mediator becomes a god object that knows and does everything. It can also become a bottleneck or a single point of failure. To limit this, keep the mediator focused on coordination only, and leave the real business logic in the components.",
+      },
     ],
     code: {
       python: `from abc import ABC, abstractmethod

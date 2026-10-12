@@ -39,7 +39,7 @@ export default function SystemDesignOverview() {
   const o = sdOverview(state);
   const items = sdItemsFor(state);
   const weakCategories = [...categoryStats(state, "hld"), ...categoryStats(state, "lld")]
-    .filter((c) => c.started > 0)
+    .filter((c) => c.completed > 0 || c.weak)
     .sort((a, b) => a.mastery - b.mastery)
     .slice(0, 5);
   const recent = o.recent.slice(0, 3);
@@ -47,8 +47,8 @@ export default function SystemDesignOverview() {
   const sections = [
     { href: "/system-design/hld", label: "High-Level Design", icon: Network, detail: `${o.hld.concepts.total} concepts · ${o.hld.problems.total} problems`, value: o.hld.mastery },
     { href: "/system-design/lld", label: "Low-Level Design", icon: Component, detail: `${o.lld.concepts.total} concepts · ${o.lld.patterns.total} patterns`, value: o.lld.mastery },
-    { href: "/system-design/concepts", label: "Concepts", icon: Blocks, detail: `${o.conceptsTotal} concepts`, value: o.conceptsMastered / o.conceptsTotal },
-    { href: "/system-design/patterns", label: "Patterns", icon: Shapes, detail: `${HLD_PATTERNS.length} architecture · ${LLD_PATTERNS.length} design`, value: (o.hld.patterns.mastered + o.lld.patterns.mastered) / (o.hld.patterns.total + o.lld.patterns.total) },
+    { href: "/system-design/concepts", label: "Concepts", icon: Blocks, detail: `${o.conceptsTotal} concepts`, value: o.conceptsCompleted / o.conceptsTotal },
+    { href: "/system-design/patterns", label: "Patterns", icon: Shapes, detail: `${HLD_PATTERNS.length} architecture · ${LLD_PATTERNS.length} design`, value: (o.hld.patterns.completed + o.lld.patterns.completed) / (o.hld.patterns.total + o.lld.patterns.total) },
     { href: "/system-design/problems", label: "Problems", icon: Boxes, detail: `${o.problemsTotal} design problems`, value: o.problemsCompleted / Math.max(1, o.problemsTotal) },
     { href: "/system-design/architecture", label: "Architecture", icon: Workflow, detail: `${Object.keys(state.diagrams).length} diagram${Object.keys(state.diagrams).length === 1 ? "" : "s"}`, value: 0 },
   ];
@@ -72,10 +72,10 @@ export default function SystemDesignOverview() {
       />
 
       <section aria-label="System Design progress" className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <Metric icon={Orbit} label="Overall progress" value={pct(o.overall)} sub="HLD + LLD mastery" progress={o.overall} />
-        <Metric icon={Network} label="HLD progress" value={pct(o.hld.mastery)} sub={`${o.hld.concepts.started}/${o.hld.concepts.total} concepts started`} progress={o.hld.mastery} tone="info" href="/system-design/hld" />
-        <Metric icon={Component} label="LLD progress" value={pct(o.lld.mastery)} sub={`${o.lld.patterns.mastered}/${o.lld.patterns.total} patterns strong`} progress={o.lld.mastery} href="/system-design/lld" />
-        <Metric icon={Blocks} label="Concepts mastered" value={o.conceptsMastered} sub={`of ${o.conceptsTotal} · confidence ≥ 4`} progress={o.conceptsMastered / o.conceptsTotal} tone="success" href="/system-design/concepts" />
+        <Metric icon={Orbit} label="Overall progress" value={pct(o.overall)} sub="HLD + LLD completed" progress={o.overall} />
+        <Metric icon={Network} label="HLD progress" value={pct(o.hld.mastery)} sub={`${o.hld.concepts.completed}/${o.hld.concepts.total} concepts completed`} progress={o.hld.mastery} tone="info" href="/system-design/hld" />
+        <Metric icon={Component} label="LLD progress" value={pct(o.lld.mastery)} sub={`${o.lld.patterns.completed}/${o.lld.patterns.total} patterns completed`} progress={o.lld.mastery} href="/system-design/lld" />
+        <Metric icon={Blocks} label="Concepts completed" value={o.conceptsCompleted} sub={`of ${o.conceptsTotal} concepts`} progress={o.conceptsCompleted / o.conceptsTotal} tone="success" href="/system-design/concepts" />
         <Metric icon={Boxes} label="Problems completed" value={o.problemsCompleted} sub={`of ${o.problemsTotal} design problems`} progress={o.problemsCompleted / Math.max(1, o.problemsTotal)} tone="success" href="/system-design/problems" />
         <Metric
           icon={CalendarClock}
@@ -95,10 +95,10 @@ export default function SystemDesignOverview() {
           <DailyPlan tracks={["hld", "lld"]} />
         </section>
         <section className="min-w-0 lg:col-span-2" aria-labelledby="sd-weak">
-          <SectionTitle id="sd-weak" hint="Lowest mastery among categories you've started.">
+          <SectionTitle id="sd-weak" hint="Lowest completion among categories you've started, plus what you're revising.">
             Weak areas
           </SectionTitle>
-          {weakCategories.length || o.weak.length ? (
+          {weakCategories.length || o.inRevision.length ? (
             <Panel className="space-y-4 p-4">
               {weakCategories.map(({ category, mastery }) => (
                 <Link key={category.id} href={`/system-design/${category.track}#${category.id}`} className="block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -111,13 +111,13 @@ export default function SystemDesignOverview() {
                   <Meter value={mastery} tone={masteryTone(mastery)} label={`${category.name} mastery`} />
                 </Link>
               ))}
-              {o.weak.length > 0 && (
+              {o.inRevision.length > 0 && (
                 <div className="border-t pt-3">
                   <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <TriangleAlert className="size-3 text-warning" aria-hidden /> Low confidence
+                    <TriangleAlert className="size-3 text-warning" aria-hidden /> In revision
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {o.weak.slice(0, 6).map((x) => (
+                    {o.inRevision.slice(0, 6).map((x) => (
                       <Link key={x.key} href={x.href} className="rounded-md border px-2 py-1 text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
                         {x.title}
                       </Link>
@@ -127,7 +127,7 @@ export default function SystemDesignOverview() {
               )}
             </Panel>
           ) : (
-            <EmptyState icon={Gauge} title="Nothing to analyse yet" description="Rate a few concepts and your weak spots show up here." />
+            <EmptyState icon={Gauge} title="Nothing to analyse yet" description="Complete a few concepts and your progress by category shows up here." />
           )}
         </section>
       </div>

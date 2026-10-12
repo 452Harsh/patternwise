@@ -144,6 +144,8 @@ export const SDEntrySchema = z.object({
     .refine((w) => JSON.stringify(w).length <= MAX_WORKSPACE_BYTES, "Workspace too large")
     .optional(),
   reviewOff: z.boolean().optional(),
+  revisit: z.boolean().optional(),
+  revisionNote: text(5_000).optional(),
   updatedAt: iso,
 });
 

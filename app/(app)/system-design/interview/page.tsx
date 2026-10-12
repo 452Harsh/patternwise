@@ -128,7 +128,7 @@ function InterviewInner() {
       phases,
       ...debrief,
     });
-    toast.success("Session saved", { description: "Your confidence rating scheduled the next review." });
+    toast.success("Session saved");
     setFinished(null);
     setDebrief({ wentWell: "", difficult: "", missing: "", toRevise: "", confidence: 3 });
   };

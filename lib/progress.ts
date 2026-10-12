@@ -142,8 +142,12 @@ export interface SDEntry {
   history: SDHistoryItem[];
   /** Problem workspaces (requirements, capacity, APIs, classes…). Shape depends on the problem track. */
   workspace?: Record<string, unknown>;
-  /** Reviews switched off: never scheduled or due, even when rated again. */
+  /** Legacy: reviews switched off. Revision is now opt-in via `revisit`. */
   reviewOff?: boolean;
+  /** Added to the revision queue by me (same model as DSA). */
+  revisit?: boolean;
+  /** What I want to revise, written when adding to revision. */
+  revisionNote?: string;
   updatedAt: string;
 }
 
@@ -918,18 +922,6 @@ export function updateSettings(patch: Partial<Settings>) {
 
 /* ---------- System Design mutations ---------- */
 
-/** Confidence scale for concepts (index = value). */
-export const SD_CONFIDENCE = ["Not rated", "Don't know", "Familiar", "Understand", "Can explain", "Can apply"] as const;
-
-/** Revision marks (value = rating 1–5). */
-export const SD_REVIEW_MARKS = [
-  { rating: 1, label: "Forgot" },
-  { rating: 2, label: "Need practice" },
-  { rating: 3, label: "Understand" },
-  { rating: 4, label: "Strong" },
-  { rating: 5, label: "Mastered" },
-] as const;
-
 export function updateSD(key: string, patch: Partial<SDEntry>, title?: string) {
   let state = read();
   const prev = state.sd[key] ?? blankSD();
@@ -968,9 +960,8 @@ export function rateSD(
   const reviewCount = prev.reviewCount + (isReview ? 1 : 0);
   const now = new Date().toISOString();
 
-  let status: SDStatus = rating >= 3 ? "done" : "learning";
-  if (rating >= 5 && reviewCount >= 2) status = "mastered";
-  else if (prev.status === "mastered" && rating >= 4) status = "mastered";
+  // No "mastered" any more: once completed, an item stays completed.
+  const status: SDStatus = prev.status === "done" || prev.status === "mastered" || rating >= 3 ? "done" : "learning";
 
   const next: SDEntry = {
     ...prev,
@@ -978,59 +969,51 @@ export function rateSD(
     confidence: rating,
     reviewCount,
     lastReviewed: now,
-    nextReview: prev.reviewOff ? undefined : addDays(date, rating <= 1 ? 1 : reviewInterval(rating, reviewCount)),
+    // Only items I put in revision get scheduled.
+    nextReview: prev.revisit ? addDays(date, rating <= 1 ? 1 : reviewInterval(rating, reviewCount)) : undefined,
     history: [...prev.history, { date, at: now, kind, rating, durationSec: opts.durationSec, note: opts.note?.trim() || undefined }].slice(-200),
     updatedAt: now,
   };
   state = { ...state, sd: { ...state.sd, [key]: next } };
 
   const name = opts.title ?? key;
-  if (correcting && status !== "mastered") {
+  if (correcting) {
     write(state); // no duplicate activity entry for a same-day correction
     return;
   }
-  if (status === "mastered" && prev.status !== "mastered") state = withEvent(state, { type: "sd-mastered", sdKey: key, text: `Mastered ${name}` });
-  else if (kind === "practice") state = withEvent(state, { type: "sd-practiced", sdKey: key, text: `Practiced ${name}` });
+  if (kind === "practice") state = withEvent(state, { type: "sd-practiced", sdKey: key, text: `Practiced ${name}` });
   else if (kind === "session") state = withEvent(state, { type: "sd-session", sdKey: key, text: `Mock session: ${name}` });
   else if (isReview) state = withEvent(state, { type: "sd-reviewed", sdKey: key, text: `Reviewed ${name}` });
   else state = withEvent(state, { type: "sd-studied", sdKey: key, text: `Learned ${name}` });
   write(state);
 }
 
-/**
- * One-click "Mark as complete": records you studied it at least at "Understand" (3) level,
- * keeping a higher confidence if you already gave one, and schedules the first review.
- */
-export function markSDComplete(key: string, title?: string) {
-  const state = read();
-  const prev = state.sd[key] ?? blankSD();
-  if (prev.status === "done" || prev.status === "mastered") return;
-  // With auto-review off in Settings, completing never schedules reviews.
-  if (!state.settings.sdAutoReview && !prev.reviewOff) {
-    write({ ...state, sd: { ...state.sd, [key]: { ...prev, reviewOff: true, nextReview: undefined } } });
-  }
-  rateSD(key, Math.max(3, prev.confidence), { title });
-}
-
-/** Switch spaced-repetition reviews off (removes it from the revision queue) or back on. */
-export function setSDReviews(key: string, on: boolean) {
+/** One-click "Mark as complete" (or "practiced" for problems). No rating; keeps the item's revision state. */
+export function markSDComplete(key: string, title?: string, kind?: SDHistoryKind) {
   const prev = read().sd[key] ?? blankSD();
-  if (on) {
-    const rating = prev.confidence || 3;
-    updateSD(key, { reviewOff: false, nextReview: addDays(today(), reviewInterval(rating, prev.reviewCount)) });
-  } else {
-    updateSD(key, { reviewOff: true, nextReview: undefined });
-  }
+  if (prev.status === "done" || prev.status === "mastered") return;
+  rateSD(key, 3, { title, kind });
 }
 
-/** Undo "complete": back to learning; history and notes are kept. */
+/** Undo "complete": back to not started; history and notes are kept. */
 export function unmarkSDComplete(key: string) {
-  updateSD(key, { status: "learning" });
+  updateSD(key, { status: "todo" });
 }
 
-/** "Review later": push the next review to tomorrow without logging a rating. */
-export function snoozeSD(key: string) {
-  updateSD(key, { nextReview: addDays(today(), 1) });
+/** Put an SD item in revision with a note on what to revise, due in `days` days. */
+export function addSDToRevision(key: string, note: string, days: number, title?: string) {
+  updateSD(key, { revisit: true, reviewOff: false, revisionNote: note.trim() || undefined, nextReview: addDays(today(), days) }, title);
+}
+
+export function removeSDFromRevision(key: string) {
+  updateSD(key, { revisit: false, revisionNote: undefined, nextReview: undefined });
+}
+
+/** Quick actions on the SD revision page, mirroring DSA's `quickReview`. */
+export function sdQuickReview(key: string, action: QuickReview, title?: string) {
+  if (action === "later") return updateSD(key, { nextReview: addDays(today(), 1) });
+  const rating = action === "forgot" ? 1 : action === "practice" ? 2 : 4;
+  rateSD(key, rating, { title, kind: "review" });
 }
 
 export function addSDCustom(p: Omit<SDCustomProblem, "id" | "createdAt">): string {
@@ -1096,8 +1079,11 @@ export function removeSDSession(id: string) {
   write({ ...state, sdSessions: state.sdSessions.filter((x) => x.id !== id) });
 }
 
-/** Due for an SD review: scheduled date has arrived. */
-export const isSDDue = (e: SDEntry | undefined) => !!e?.nextReview && e.history.length > 0 && e.nextReview <= today();
+/** Due for an SD review: in revision and the scheduled date has arrived. */
+export const isSDDue = (e: SDEntry | undefined) => !!e?.revisit && !!e.nextReview && e.nextReview <= today();
+
+/** Completed (legacy "mastered" counts as completed). */
+export const isSDDone = (e: SDEntry | undefined) => e?.status === "done" || e?.status === "mastered";
 
 /* ---------- backup ---------- */
 

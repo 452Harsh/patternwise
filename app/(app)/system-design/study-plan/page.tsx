@@ -45,7 +45,7 @@ export default function SDStudyPlanPage() {
       </section>
 
       <section aria-labelledby="sd-roadmap" className="space-y-3">
-        <SectionTitle id="sd-roadmap" hint="Move on once a phase is around 60% mastered.">
+        <SectionTitle id="sd-roadmap" hint="Move on once a phase is around 60% complete.">
           Roadmap
         </SectionTitle>
         <ol className="space-y-3">
@@ -107,7 +107,7 @@ export default function SDStudyPlanPage() {
                                     <span className="mb-1 flex justify-between text-sm">
                                       <span className="truncate">{c.category.name}</span>
                                       <span className="font-mono text-xs text-muted-foreground">
-                                        {c.started}/{c.total}
+                                        {c.completed}/{c.total}
                                       </span>
                                     </span>
                                     <Meter value={c.mastery} tone={masteryTone(c.mastery)} label={`${c.category.name} mastery`} />

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, CircleMinus, CirclePlus, MessageCircleQuestion } from "lucide-react";
+import { ArrowUpRight, CircleMinus, CirclePlus } from "lucide-react";
 import { CodeBlock } from "@/components/code-block";
 import { Panel, Tag } from "@/components/kit";
 import { HLD_PATTERNS, HLD_PROBLEMS, LLD_PROBLEMS, SD_CATEGORIES, conceptById, sdKey } from "@/data/sd";
 import { useStore } from "@/lib/progress";
 import { FlowDiagram } from "./flow-diagram";
+import { InterviewQuestions } from "./interview-questions";
 import { CompleteButton, SDNotes, SDProgressPanel, SDStatusBadge, TrackTag } from "./sd-kit";
 
 export function Block({ id, title, children, hint }: { id: string; title: string; children: React.ReactNode; hint?: string }) {
@@ -123,15 +124,8 @@ export function ConceptDetail({ id }: { id: string }) {
             </div>
           </Block>
 
-          <Block id="questions" title="Common interview questions" hint="Answer them out loud.">
-            <ul className="space-y-2">
-              {c.interviewQuestions.map((q) => (
-                <li key={q} className="flex gap-2.5 rounded-lg border bg-surface px-3 py-2.5 text-sm">
-                  <MessageCircleQuestion className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                  {q}
-                </li>
-              ))}
-            </ul>
+          <Block id="questions" title="Common interview questions" hint="Answer out loud, then open to check.">
+            <InterviewQuestions items={c.interviewQuestions} />
           </Block>
 
           <Block id="related" title="Related concepts">

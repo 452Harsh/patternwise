@@ -59,8 +59,7 @@ These are short records of the decisions that shape the codebase. Each one has t
   - Later they wanted to complete an item *without* it coming back for review.
 - **Decision:**
   - `markSDComplete` rates the item at least 3.
-  - `reviewOff` on an item removes it from revision.
-  - `settings.sdAutoReview` makes "complete" never schedule a review.
+  - Superseded (Oct 2026): revision is now opt-in for both DSA and SD. Completing never schedules a review; "Add to revision" (note + days) does. `reviewOff` and `settings.sdAutoReview` are legacy fields.
   - A same-day re-rating corrects the day's entry instead of counting as a new review.
 
 ## D10. Next.js 16 conventions

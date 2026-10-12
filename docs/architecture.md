@@ -118,7 +118,7 @@ The app is two independent preparation environments sharing one shell, store, da
 |---|---|---|
 | Review interval | `reviewInterval(confidence, revisitCount)` = `[1,1,3,7,14,30][c] × (1 + 0.5·revisits)` days | `lib/progress.ts` |
 | DSA attempt logging & mastery promotion | `logAttempt`, `quickReview` | `lib/progress.ts` |
-| SD rating, same-day correction, review scheduling | `rateSD`, `markSDComplete`, `setSDReviews`, `snoozeSD` | `lib/progress.ts` |
+| SD completion and opt-in revision | `markSDComplete`, `addSDToRevision`, `removeSDFromRevision`, `sdQuickReview` (`rateSD` internal) | `lib/progress.ts` |
 | DSA problem / pattern / topic mastery | `problemScore`, `patternStat`, `topicStat`, `overview` | `lib/stats.ts` |
 | SD mastery & roadmap | `sdScore`, `trackStats`, `categoryStats`, `sdOverview`, `sdPhaseProgress` | `lib/sd.ts` |
 | Daily plan (DSA + SD tasks) | `buildDailyPlan`, `systemDesignTasks` | `lib/plan.ts` |

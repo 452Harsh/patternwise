@@ -12,36 +12,56 @@ import { cn } from "@/lib/utils";
 
 const DAY_PRESETS = [1, 3, 7, 14, 30];
 
-interface Props {
-  slug: string;
+interface DialogProps {
   title: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Add a problem to revision (or edit it): what to revise, and in how many days. */
-export function RevisionDialog(props: Props) {
+/** Revision state of whatever is being revised (a DSA problem or a System Design item). */
+export interface RevisionTarget {
+  inRevision: boolean;
+  note?: string;
+  nextReview?: string;
+  save: (note: string, days: number) => void;
+  remove: () => void;
+}
+
+/** DSA problem: add to revision (or edit it) with a note and the number of days. */
+export function RevisionDialog({ slug, ...props }: DialogProps & { slug: string }) {
+  const entry = useProgress()[slug] ?? blankEntry();
+  const target: RevisionTarget = {
+    inRevision: entry.revisit,
+    note: entry.revisionNote,
+    nextReview: entry.nextReview,
+    save: (note, days) => addToRevision(slug, note, days, props.title),
+    remove: () => removeFromRevision(slug),
+  };
+  return <RevisionDialogFor target={target} {...props} />;
+}
+
+/** Shared dialog; System Design passes its own `target`. */
+export function RevisionDialogFor({ target, ...props }: DialogProps & { target: RevisionTarget }) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="sm:max-w-md">
         {/* Content unmounts on close, so the form starts fresh each time. */}
-        <RevisionForm {...props} />
+        <RevisionForm target={target} {...props} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function RevisionForm({ slug, title, onOpenChange }: Props) {
-  const entry = useProgress()[slug] ?? blankEntry();
-  const editing = entry.revisit;
-  const [note, setNote] = useState(entry.revisionNote ?? "");
+function RevisionForm({ target, title, onOpenChange }: DialogProps & { target: RevisionTarget }) {
+  const editing = target.inRevision;
+  const [note, setNote] = useState(target.note ?? "");
   const [days, setDays] = useState(() =>
-    String(editing && entry.nextReview ? Math.max(1, daysBetween(today(), entry.nextReview)) : 3),
+    String(editing && target.nextReview ? Math.max(1, daysBetween(today(), target.nextReview)) : 3),
   );
   const n = Math.max(1, Math.round(Number(days) || 1));
 
   const save = () => {
-    addToRevision(slug, note, n, title);
+    target.save(note, n);
     toast.success(editing ? "Revision updated" : "Added to revision", {
       description: `Review in ${n} day${n === 1 ? "" : "s"}.`,
     });
@@ -49,7 +69,7 @@ function RevisionForm({ slug, title, onOpenChange }: Props) {
   };
 
   const remove = () => {
-    removeFromRevision(slug);
+    target.remove();
     toast("Removed from revision");
     onOpenChange(false);
   };

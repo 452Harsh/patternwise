@@ -1,39 +1,46 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { toast } from "sonner";
-import { CircleCheck, CircleDashed, CircleDot, Crown, Star, type LucideIcon } from "lucide-react";
+import { BookmarkCheck, BookmarkPlus, Brain, Check, CircleCheck, CircleDashed, Clock, RotateCcw, Star, ThumbsDown, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Confidence, DifficultyBadge, EmptyState, Panel, Shimmer, Tag } from "@/components/kit";
+import { DifficultyBadge, EmptyState, Panel, Shimmer, Tag } from "@/components/kit";
+import { RevisionDialogFor } from "@/components/revision-dialog";
 import type { SDItem } from "@/data/sd";
 import { relativeDay } from "@/lib/format";
 import {
-  SD_CONFIDENCE,
-  SD_REVIEW_MARKS,
+  addSDToRevision,
   blankSD,
+  isSDDone,
   isSDDue,
   markSDComplete,
-  rateSD,
-  setSDReviews,
+  removeSDFromRevision,
+  sdQuickReview,
   unmarkSDComplete,
   updateSD,
   useHydrated,
   useStore,
+  type QuickReview,
   type SDEntry,
   type SDHistoryKind,
-  type SDStatus,
 } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
-export const SD_STATUS_META: Record<SDStatus, { label: string; icon: LucideIcon; className: string }> = {
+/** Display status, same three states as DSA: not started, completed, needs revision. */
+export type SDDisplayStatus = "todo" | "done" | "revision";
+
+export const sdDisplayStatus = (e: SDEntry | undefined): SDDisplayStatus => (e?.revisit ? "revision" : isSDDone(e) ? "done" : "todo");
+
+export const SD_STATUS_META: Record<SDDisplayStatus, { label: string; icon: LucideIcon; className: string }> = {
   todo: { label: "Not started", icon: CircleDashed, className: "text-muted-foreground" },
-  learning: { label: "Learning", icon: CircleDot, className: "text-info" },
   done: { label: "Completed", icon: CircleCheck, className: "text-success" },
-  mastered: { label: "Mastered", icon: Crown, className: "text-primary" },
+  revision: { label: "Needs revision", icon: RotateCcw, className: "text-warning" },
 };
 
 export function SDStatusBadge({ entry, compact }: { entry?: SDEntry; compact?: boolean }) {
-  const m = SD_STATUS_META[entry?.status ?? "todo"];
+  const m = SD_STATUS_META[sdDisplayStatus(entry)];
   const Icon = m.icon;
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", m.className)}>
@@ -58,76 +65,75 @@ export const TrackTag = ({ track }: { track: "hld" | "lld" | "dsa" }) => (
 
 const sdEntry = (state: ReturnType<typeof useStore>, key: string) => state.sd[key] ?? blankSD();
 
-/** Concept confidence scale: Don't know → Can apply. Rating also schedules a review. */
-export function ConfidencePicker({ itemKey, title }: { itemKey: string; title: string }) {
-  const e = sdEntry(useStore(), itemKey);
+/** Quick actions for the revision queue, the same four as DSA. */
+const QUICK_ACTIONS: { id: QuickReview; label: string; icon: LucideIcon; variant: "default" | "secondary" | "outline" | "ghost"; hint: string; done: string }[] = [
+  { id: "got-it", label: "Got it", icon: Check, variant: "default", hint: "Remembered it: push the next review out", done: "Next review rescheduled." },
+  { id: "practice", label: "Need more practice", icon: Brain, variant: "secondary", hint: "Shaky: review again in a few days", done: "Next review rescheduled." },
+  { id: "forgot", label: "Forgot", icon: ThumbsDown, variant: "outline", hint: "Couldn't recall: back tomorrow", done: "Back in the queue tomorrow." },
+  { id: "later", label: "Review later", icon: Clock, variant: "ghost", hint: "Snooze for a day", done: "Snoozed until tomorrow." },
+];
+
+export function SDQuickReview({ itemKey, title }: { itemKey: string; title: string }) {
   return (
-    <div role="radiogroup" aria-label={`Your confidence with ${title}`} className="flex flex-wrap gap-1.5">
-      {SD_CONFIDENCE.slice(1).map((label, i) => {
-        const value = i + 1;
-        const active = e.confidence === value;
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Review ${title}`}>
+      {QUICK_ACTIONS.map((a) => {
+        const Icon = a.icon;
         return (
-          <button
-            key={label}
-            type="button"
-            role="radio"
-            aria-checked={active}
+          <Button
+            key={a.id}
+            size="sm"
+            variant={a.variant}
+            title={a.hint}
             onClick={() => {
-              rateSD(itemKey, value, { title });
-              toast.success(`${title}: ${label}`, { description: "Next review scheduled." });
+              sdQuickReview(itemKey, a.id, title);
+              toast(`${a.label}: ${title}`, { description: a.done });
             }}
-            className={cn(
-              "inline-flex h-8 items-center gap-2 rounded-lg border px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-              active ? "border-primary/50 bg-primary/12 font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
           >
-            <Confidence value={value} />
-            {label}
-          </button>
+            <Icon data-icon="inline-start" /> {a.label}
+          </Button>
         );
       })}
     </div>
   );
 }
 
-/** Revision marks: Forgot → Mastered. */
-export function ReviewButtons({
-  itemKey,
-  title,
-  kind = "review",
-  size = "default",
-  onDone,
-}: {
-  itemKey: string;
-  title: string;
-  kind?: SDHistoryKind;
-  size?: "default" | "sm";
-  onDone?: () => void;
-}) {
+/** "Add to revision" / "In revision": opens the shared revision dialog (note + days). */
+export function SDRevisionButton({ itemKey, title, block }: { itemKey: string; title: string; block?: boolean }) {
+  const e = sdEntry(useStore(), itemKey);
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Review ${title}`}>
-      {SD_REVIEW_MARKS.map((m) => (
-        <button
-          key={m.rating}
-          type="button"
-          onClick={() => {
-            rateSD(itemKey, m.rating, { title, kind });
-            toast(`${m.label}: ${title}`, { description: m.rating <= 1 ? "Back tomorrow." : "Next review rescheduled." });
-            onDone?.();
-          }}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-            size === "sm" ? "h-7 px-2 text-xs" : "h-8 px-3 text-sm",
-            m.rating <= 1 && "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive",
-            m.rating === 2 && "hover:border-warning/40 hover:bg-warning/10 hover:text-warning",
-            m.rating === 3 && "hover:bg-muted",
-            m.rating >= 4 && "hover:border-success/40 hover:bg-success/10 hover:text-success",
-          )}
-        >
-          <Confidence value={m.rating} />
-          {m.label}
-        </button>
-      ))}
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)} aria-pressed={!!e.revisit} className={cn(block && "w-full")}>
+        {e.revisit ? <BookmarkCheck data-icon="inline-start" className="text-warning" /> : <BookmarkPlus data-icon="inline-start" />}
+        {e.revisit ? "In revision" : "Add to revision"}
+      </Button>
+      <RevisionDialogFor
+        title={title}
+        open={open}
+        onOpenChange={setOpen}
+        target={{
+          inRevision: !!e.revisit,
+          note: e.revisionNote,
+          nextReview: e.nextReview,
+          save: (note, days) => addSDToRevision(itemKey, note, days, title),
+          remove: () => removeSDFromRevision(itemKey),
+        }}
+      />
+    </>
+  );
+}
+
+/** The revision note and next date, shown on item pages once the item is in revision. */
+function RevisionInfo({ e }: { e: SDEntry }) {
+  if (!e.revisit) return null;
+  const due = isSDDue(e);
+  return (
+    <div className="space-y-2 rounded-lg bg-warning/10 px-3 py-2 text-sm">
+      <p className="flex items-center justify-between text-xs">
+        <span className="text-warning">To revise</span>
+        <span className={cn("font-mono", due ? "text-warning" : "text-muted-foreground")}>{due ? "due" : relativeDay(e.nextReview)}</span>
+      </p>
+      <p className="whitespace-pre-wrap">{e.revisionNote || <span className="text-muted-foreground">No note. Use “In revision” to add one.</span>}</p>
     </div>
   );
 }
@@ -164,47 +170,18 @@ export function StarToggle({ itemKey, title }: { itemKey: string; title: string 
   );
 }
 
-/** Small progress summary card for an item page. */
-export function SDProgressCard({ itemKey }: { itemKey: string }) {
+/** Progress card for problem pages: status, mark as practiced, add to revision. */
+export function SDProgressCard({ itemKey, title }: { itemKey: string; title: string }) {
   const e = sdEntry(useStore(), itemKey);
-  const due = isSDDue(e);
   return (
     <Panel className="space-y-3 p-4">
-      <SDStatusBadge entry={e} />
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
-        <div>
-          <dt className="text-xs text-muted-foreground">Confidence</dt>
-          <dd className="flex h-6 items-center" title={SD_CONFIDENCE[e.confidence]}>
-            <Confidence value={e.confidence} />
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Reviews</dt>
-          <dd className="font-mono">{e.reviewCount}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Last reviewed</dt>
-          <dd className="font-mono">{relativeDay(e.lastReviewed)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Next review</dt>
-          <dd className={cn("font-mono", due && "text-warning")}>{e.reviewOff ? "Off" : due ? "due" : relativeDay(e.nextReview)}</dd>
-        </div>
-      </dl>
-      {e.history.length > 0 && (
-        <button
-          type="button"
-          onClick={() => {
-            setSDReviews(itemKey, !!e.reviewOff);
-            toast(e.reviewOff ? "Reviews resumed" : "Reviews stopped", {
-              description: e.reviewOff ? "It's back on your revision schedule." : "It won't come up in Revision any more.",
-            });
-          }}
-          className="w-full rounded-lg border px-3 py-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {e.reviewOff ? "Resume reviews" : "Stop reviews — I'm done with this"}
-        </button>
-      )}
+      <div className="flex items-center justify-between gap-2">
+        <SDStatusBadge entry={e} />
+        <StarToggle itemKey={itemKey} title={title} />
+      </div>
+      <CompleteButton itemKey={itemKey} title={title} kind="practice" block />
+      <SDRevisionButton itemKey={itemKey} title={title} block />
+      <RevisionInfo e={e} />
     </Panel>
   );
 }
@@ -251,11 +228,8 @@ export function SDItemList({ items, empty, showTrack = true }: { items: SDItem[]
               <Tag>{x.group}</Tag>
               {x.difficulty && <DifficultyBadge difficulty={x.difficulty} />}
             </span>
-            <span className="hidden w-16 shrink-0 justify-end md:flex">
-              <Confidence value={e?.confidence ?? 0} />
-            </span>
             <span className={cn("w-16 shrink-0 text-right font-mono text-[11px]", due ? "text-warning" : "text-muted-foreground")}>
-              {due ? "due" : e?.nextReview ? relativeDay(e.nextReview) : "—"}
+              {due ? "due" : e?.revisit && e.nextReview ? relativeDay(e.nextReview) : "—"}
             </span>
           </Link>
         );
@@ -264,11 +238,11 @@ export function SDItemList({ items, empty, showTrack = true }: { items: SDItem[]
   );
 }
 
-/** Prominent "Mark as complete" toggle for concept and pattern pages. */
-export function CompleteButton({ itemKey, title, block }: { itemKey: string; title: string; block?: boolean }) {
+/** One-click "Mark as complete" (or "Mark as practiced" for problems), with Undo. */
+export function CompleteButton({ itemKey, title, block, kind }: { itemKey: string; title: string; block?: boolean; kind?: SDHistoryKind }) {
   const e = sdEntry(useStore(), itemKey);
-  const done = e.status === "done" || e.status === "mastered";
-  if (done) {
+  const doneLabel = kind === "practice" ? "Practiced" : "Completed";
+  if (isSDDone(e)) {
     return (
       <div className="flex items-center gap-2">
         <span
@@ -276,20 +250,18 @@ export function CompleteButton({ itemKey, title, block }: { itemKey: string; tit
           role="status"
         >
           <CircleCheck className="size-4 animate-pop" aria-hidden />
-          {e.status === "mastered" ? "Mastered" : "Completed"}
+          {doneLabel}
         </span>
-        {e.status === "done" && (
-          <button
-            type="button"
-            onClick={() => {
-              unmarkSDComplete(itemKey);
-              toast(`${title} marked as not complete`);
-            }}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          >
-            Undo
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            unmarkSDComplete(itemKey);
+            toast(`${title} marked as not ${doneLabel.toLowerCase()}`);
+          }}
+          className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Undo
+        </button>
       </div>
     );
   }
@@ -297,102 +269,31 @@ export function CompleteButton({ itemKey, title, block }: { itemKey: string; tit
     <button
       type="button"
       onClick={() => {
-        markSDComplete(itemKey, title);
-        toast.success(`${title} completed`, { description: "Added to your revision schedule." });
+        markSDComplete(itemKey, title, kind);
+        toast.success(`${title} ${doneLabel.toLowerCase()}`);
       }}
       className={cn(
         "inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/85 focus-visible:ring-2 focus-visible:ring-ring",
         block && "w-full justify-center",
       )}
     >
-      <CircleCheck className="size-4" aria-hidden /> Mark as complete
+      <CircleCheck className="size-4" aria-hidden /> {kind === "practice" ? "Mark as practiced" : "Mark as complete"}
     </button>
   );
 }
 
-const CONFIDENCE_HINTS = ["", "Never seen it", "Heard of it", "Get the idea", "Could teach it", "Use it in designs"];
-
-/**
- * Single "Your progress" panel for concept and pattern pages: completion, favourite,
- * confidence (which schedules reviews), review stats and the stop/resume reviews switch.
- */
-export function SDProgressPanel({ itemKey, title, prompt }: { itemKey: string; title: string; prompt?: string }) {
+/** "Your progress" panel for concept and pattern pages: complete, favourite, revision. */
+export function SDProgressPanel({ itemKey, title }: { itemKey: string; title: string }) {
   const e = sdEntry(useStore(), itemKey);
-  const due = isSDDue(e);
   return (
-    <Panel className="overflow-hidden">
-      <div className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">Your progress</p>
-          <StarToggle itemKey={itemKey} title={title} />
-        </div>
-        <CompleteButton itemKey={itemKey} title={title} block />
+    <Panel className="space-y-3 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Your progress</p>
+        <StarToggle itemKey={itemKey} title={title} />
       </div>
-
-      <div className="border-t p-4">
-        <p className="text-sm font-medium">How well do you know it?</p>
-        <p className="mb-3 text-xs text-muted-foreground">{prompt ?? "Pick honestly — it decides when this comes back for review."}</p>
-        <div role="radiogroup" aria-label={`Your confidence with ${title}`} className="space-y-1">
-          {SD_CONFIDENCE.slice(1).map((label, i) => {
-            const value = i + 1;
-            const active = e.confidence === value;
-            return (
-              <button
-                key={label}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => {
-                  rateSD(itemKey, value, { title });
-                  toast.success(`${title}: ${label}`, { description: e.reviewOff ? "Reviews are off for this item." : "Next review scheduled." });
-                }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                  active ? "border-primary/50 bg-primary/10" : "border-transparent hover:bg-muted",
-                )}
-              >
-                <Confidence value={value} className="w-12 shrink-0" />
-                <span className="min-w-0 flex-1">
-                  <span className={cn("block text-sm", active ? "font-medium text-foreground" : "text-foreground/90")}>{label}</span>
-                  <span className="block text-[11px] text-muted-foreground">{CONFIDENCE_HINTS[value]}</span>
-                </span>
-                {active && <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden />}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="space-y-3 border-t bg-surface/60 p-4">
-        <dl className="grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <dt className="text-[11px] text-muted-foreground">Reviews</dt>
-            <dd className="font-mono">{e.reviewCount}</dd>
-          </div>
-          <div>
-            <dt className="text-[11px] text-muted-foreground">Last reviewed</dt>
-            <dd className="font-mono">{relativeDay(e.lastReviewed)}</dd>
-          </div>
-          <div>
-            <dt className="text-[11px] text-muted-foreground">Next review</dt>
-            <dd className={cn("font-mono", due && "text-warning")}>{e.reviewOff ? "Off" : due ? "due" : relativeDay(e.nextReview)}</dd>
-          </div>
-        </dl>
-        {e.history.length > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              setSDReviews(itemKey, !!e.reviewOff);
-              toast(e.reviewOff ? "Reviews resumed" : "Reviews stopped", {
-                description: e.reviewOff ? "It's back on your revision schedule." : "It won't come up in Revision any more.",
-              });
-            }}
-            className="text-xs text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:underline"
-          >
-            {e.reviewOff ? "Resume reviews" : "Stop reviews — I'm done with this"}
-          </button>
-        )}
-      </div>
+      <CompleteButton itemKey={itemKey} title={title} block />
+      <SDRevisionButton itemKey={itemKey} title={title} block />
+      <RevisionInfo e={e} />
     </Panel>
   );
 }

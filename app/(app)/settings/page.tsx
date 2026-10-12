@@ -19,7 +19,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -134,14 +133,6 @@ export default function SettingsPage() {
               ))}
             </NativeSelect>
             <p className="text-xs text-muted-foreground">Counts toward DSA preparation and readiness.</p>
-          </div>
-          <div className={selectCell}>
-            <span className="text-sm leading-none font-medium">System Design reviews</span>
-            <label className="flex h-8 cursor-pointer items-center gap-2.5 rounded-lg border border-input px-2.5 text-sm dark:bg-input/30">
-              <Checkbox checked={state.settings.sdAutoReview} onCheckedChange={(v) => updateSettings({ sdAutoReview: v === true })} />
-              Schedule when I mark complete
-            </label>
-            <p className="text-xs text-muted-foreground">Off: completing adds nothing to Revision. Per-item stop/resume still works.</p>
           </div>
         </div>
       </SettingsCard>

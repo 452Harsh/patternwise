@@ -21,7 +21,7 @@ import { findProblem, sdKey } from "@/data/sd";
 import { removeSDCustom, useHydrated, useStore } from "@/lib/progress";
 import { HLDWorkspace, HLD_SECTIONS } from "./hld-workspace";
 import { LLDWorkspace, LLD_SECTIONS } from "./lld-workspace";
-import { ReviewButtons, SDNotes, SDProgressCard, SDStatusBadge, StarToggle, TrackTag } from "./sd-kit";
+import { SDNotes, SDProgressCard, SDStatusBadge, StarToggle, TrackTag } from "./sd-kit";
 
 export function SDProblemPage({ id }: { id: string }) {
   const state = useStore();
@@ -115,12 +115,7 @@ export function SDProblemPage({ id }: { id: string }) {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start" aria-label="Progress on this problem">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">Mark as practiced</p>
-            <p className="text-xs text-muted-foreground">How did your design hold up? This schedules the next attempt.</p>
-            <ReviewButtons itemKey={key} title={title} kind="practice" size="sm" />
-          </div>
-          <SDProgressCard itemKey={key} />
+          <SDProgressCard itemKey={key} title={title} />
           <nav aria-label="On this page" className="hidden lg:block">
             <p className="mb-2 px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">On this page</p>
             <ul className="space-y-0.5">

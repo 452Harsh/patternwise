@@ -169,8 +169,8 @@ Beyond CI there are **no browser (e2e) tests in the repo** (see [`roadmap.md`](r
 - Use `useCatalog()` for DSA problem lists and `useSDItems()` for SD lists, because they include user-created items.
 - Use `isSolved`, `isDue`, `needsRevisit`, `displayStatus` and `isSDDue`; don't re-derive status.
 - Use `reviewInterval` for any scheduling.
-- Use `rateSD`, `markSDComplete` and `setSDReviews` for SD progress, and `logAttempt` / `quickReview` for DSA.
-- Use `SDProgressPanel`, `CompleteButton` and `ReviewButtons` for SD item pages.
+- Use `markSDComplete`, `addSDToRevision` / `removeSDFromRevision` and `sdQuickReview` for SD progress, and `markSolved`, `addToRevision` / `removeFromRevision` and `quickReview` for DSA. Revision is opt-in in both modules.
+- Use `SDProgressPanel` (or `SDProgressCard` on problem pages), `CompleteButton` and `SDRevisionButton` for SD item pages.
 - For shared widgets, pass `scope` / `tracks` instead of forking components.
 - Use `withEvent` for activity, with the event types defined in `EventType`.
 

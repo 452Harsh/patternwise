@@ -10,7 +10,7 @@ Part of the [System Design module](system-design.md). Track id: `"lld"`.
 | `principles` | Design Principles (SOLID, DRY, KISS, …) |
 | `uml-design` | UML & Class Design |
 
-LLD concepts share the `SDConcept` shape with HLD concepts. They may also include a short code `example` (Python; the site is Python-only), which is rendered by `components/code-block.tsx`.
+LLD concepts share the `SDConcept` shape with HLD concepts. They may also include a short code `example` (Python; the site is Python-only). LLD concept and pattern text is written in plain English (definitions excepted), and their `interviewQuestions` are `{ q, a }` pairs that render as dropdowns via `components/sd/interview-questions.tsx` (HLD concepts still use plain strings), which is rendered by `components/code-block.tsx`.
 
 ## Design patterns: 19 GoF patterns (`data/sd/lld-patterns.ts`)
 

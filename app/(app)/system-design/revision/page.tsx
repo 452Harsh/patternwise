@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { BellOff, Clock, PartyPopper, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Confidence, EmptyState, PageHeader, Panel, Shimmer, Tag } from "@/components/kit";
-import { ReviewButtons, TrackTag } from "@/components/sd/sd-kit";
+import { PartyPopper, RotateCcw } from "lucide-react";
+import { EmptyState, PageHeader, Panel, Shimmer, Tag } from "@/components/kit";
+import { SDQuickReview, SDRevisionButton, TrackTag } from "@/components/sd/sd-kit";
 import type { SDItem } from "@/data/sd";
 import { relativeDay } from "@/lib/format";
-import { isSDDue, reviewInterval, setSDReviews, snoozeSD, useHydrated, useStore, type SDEntry } from "@/lib/progress";
+import { isSDDue, useHydrated, useStore, type SDEntry } from "@/lib/progress";
 import { useSDItems } from "@/lib/sd";
 import { cn } from "@/lib/utils";
 
 type Queue = "due" | "hld-concepts" | "hld-problems" | "lld-concepts" | "lld-patterns" | "lld-problems" | "diagrams";
 
 const QUEUES: { id: Queue; label: string; hint: string; test: (x: SDItem) => boolean }[] = [
-  { id: "due", label: "Due today", hint: "Everything whose review date has arrived, oldest first.", test: () => true },
+  { id: "due", label: "Due today", hint: "Items you added to revision whose date has arrived, oldest first.", test: () => true },
   { id: "hld-concepts", label: "HLD concepts", hint: "Distributed-systems concepts and architecture patterns.", test: (x) => x.track === "hld" && (x.kind === "concept" || x.kind === "pattern") },
   { id: "hld-problems", label: "HLD problems", hint: "Redesign them from a blank page.", test: (x) => x.track === "hld" && x.kind === "problem" },
   { id: "lld-concepts", label: "LLD concepts", hint: "OOP and design principles.", test: (x) => x.track === "lld" && x.kind === "concept" },
@@ -42,24 +41,14 @@ function ReviewRow({ item, entry }: { item: SDItem; entry: SDEntry }) {
               Last reviewed <span className="font-mono text-foreground">{relativeDay(entry.lastReviewed)}</span>
             </span>
             <span>
-              Reviews <span className="font-mono text-foreground">{entry.reviewCount}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              Confidence <Confidence value={entry.confidence} />
-            </span>
-            <span>
-              Next <span className={cn("font-mono", due ? "text-warning" : "text-foreground")}>{entry.reviewOff ? "off" : due ? `due ${relativeDay(entry.nextReview)}` : relativeDay(entry.nextReview)}</span>
+              Next <span className={cn("font-mono", due ? "text-warning" : "text-foreground")}>{due ? `due ${relativeDay(entry.nextReview)}` : relativeDay(entry.nextReview)}</span>
             </span>
           </div>
+          {entry.revisionNote && <p className="mt-2 whitespace-pre-wrap rounded-lg bg-warning/10 px-3 py-2 text-sm">{entry.revisionNote}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <ReviewButtons itemKey={item.key} title={item.title} size="sm" />
-          <Button variant="ghost" size="sm" onClick={() => snoozeSD(item.key)} title="Push to tomorrow without rating">
-            <Clock data-icon="inline-start" /> Later
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSDReviews(item.key, false)} title="Remove from revision for good (you can resume on its page)">
-            <BellOff data-icon="inline-start" /> Stop reviewing
-          </Button>
+          <SDQuickReview itemKey={item.key} title={item.title} />
+          <SDRevisionButton itemKey={item.key} title={item.title} />
         </div>
       </div>
     </Panel>
@@ -72,8 +61,8 @@ export default function SDRevisionPage() {
   const hydrated = useHydrated();
   const [queue, setQueue] = useState<Queue>("due");
 
-  // Items with reviews switched off leave the revision queues entirely.
-  const reviewed = items.filter((x) => state.sd[x.key]?.history.length && !state.sd[x.key].reviewOff);
+  // Only items added to revision (same as DSA).
+  const reviewed = items.filter((x) => state.sd[x.key]?.revisit);
   const lists = Object.fromEntries(
     QUEUES.map((q) => [
       q.id,
@@ -90,7 +79,7 @@ export default function SDRevisionPage() {
       <PageHeader
         eyebrow="System Design"
         title="Revision"
-        subtitle="The same spaced-repetition schedule as DSA, applied to concepts, patterns, problems and diagrams."
+        subtitle="Concepts, patterns, problems and diagrams you added to revision, on the days you chose."
         actions={
           hydrated && (
             <Panel className="px-3 py-1.5 text-sm">
@@ -99,21 +88,6 @@ export default function SDRevisionPage() {
           )
         }
       />
-
-      <Panel className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">Marks</span>
-        {[
-          [1, "Forgot"],
-          [2, "Need practice"],
-          [3, "Understand"],
-          [4, "Strong"],
-          [5, "Mastered"],
-        ].map(([r, l]) => (
-          <span key={l} className="inline-flex items-center gap-1.5">
-            <Confidence value={r as number} /> {l} <span className="font-mono">{r === 1 ? "1d" : `${reviewInterval(r as number, 0)}d`}</span>
-          </span>
-        ))}
-      </Panel>
 
       <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Revision queues">
         {QUEUES.map((q) => (
@@ -150,7 +124,7 @@ export default function SDRevisionPage() {
           <EmptyState
             icon={queue === "due" ? PartyPopper : RotateCcw}
             title={queue === "due" ? "No revision tasks today" : `Nothing in “${current.label}” yet`}
-            description="Rate a concept, pattern, problem or diagram and it joins the schedule."
+            description="Use “Add to revision” on a concept, pattern, problem or diagram to put it here."
             action={
               <Link href="/system-design/concepts" className="text-sm font-medium text-primary hover:underline">
                 Browse concepts →

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmptyState, Shimmer } from "@/components/kit";
 import { ArchitectureEditor } from "@/components/sd/architecture-editor";
-import { ReviewButtons, SDNotes } from "@/components/sd/sd-kit";
+import { CompleteButton, SDNotes, SDRevisionButton } from "@/components/sd/sd-kit";
 import { SD_INDEX, sdKey } from "@/data/sd";
 import { deleteDiagram, useHydrated, useStore } from "@/lib/progress";
 
@@ -77,8 +77,11 @@ export default function DiagramPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-2 text-sm font-semibold">Review this diagram</h2>
-          <p className="mb-3 text-xs text-muted-foreground">Could you redraw it from memory and explain every arrow? Rating it adds it to your revision queue.</p>
-          <ReviewButtons itemKey={key} title={diagram.title} />
+          <p className="mb-3 text-xs text-muted-foreground">Could you redraw it from memory and explain every arrow?</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <CompleteButton itemKey={key} title={diagram.title} />
+            <SDRevisionButton itemKey={key} title={diagram.title} />
+          </div>
         </section>
         <section>
           <h2 className="mb-2 text-sm font-semibold">Notes</h2>

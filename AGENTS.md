@@ -62,14 +62,14 @@ Before finishing a change, run `npm run lint && npm run check:data && npm run bu
 
 - **UI kits:**
   - `components/kit.tsx`: Panel, PageHeader, Meter, Ring, badges, EmptyState, Shimmer.
-  - `components/sd/sd-kit.tsx`: SDProgressPanel, CompleteButton, ReviewButtons, SDNotes.
+  - `components/sd/sd-kit.tsx`: SDProgressPanel, CompleteButton, SDRevisionButton, SDQuickReview, SDNotes.
   - `components/sd/workspace-kit.tsx`: workspace sections.
 - **Item lists:** `useCatalog()` (DSA) and `useSDItems()` (SD) include user-created items.
 - **Status helpers:** `isSolved`, `isDue`, `needsRevisit`, `displayStatus`, `isSDDue`. Use these instead of comparing status strings.
 - **Scheduling:** `reviewInterval`.
 - **Progress updates:**
-  - DSA: `logAttempt`, `quickReview`.
-  - SD: `rateSD`, `markSDComplete`, `setSDReviews`.
+  - DSA: `markSolved`, `addToRevision`, `removeFromRevision`, `quickReview` (`logAttempt` is used by timed practice).
+  - SD: `markSDComplete`, `addSDToRevision`, `removeSDFromRevision`, `sdQuickReview` (`rateSD` is internal).
 - **Shared views:** `ActivityFeed`, `DailyPlan` and `NotesView` take a `scope` or `tracks` prop. Pass it instead of forking the component.
 
 ## Rules

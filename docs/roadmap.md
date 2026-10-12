@@ -50,7 +50,6 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 
 ## 2. Partially implemented
 
-- [ ] **Stop reviews:** exists for System Design (`setSDReviews`) but **not for DSA**; DSA problems can only be snoozed ("Review later").
 - [ ] **Multi-device sync:** works through load-time merge and per-item newest-wins, but there is no live update across devices. Tabs in the same browser stay in step through the shared localStorage copy (`storage` events); another device only sees changes after a reload.
 - [ ] **Diagram editor:** core editing works. Missing: undo/redo, multi-select, export (PNG/SVG), curved or orthogonal edge routing.
 - [ ] **UML layout:** `autoLayout` is a simple level-based layout. Large diagrams can need manual dragging.
@@ -70,7 +69,7 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 
 ## 4. Known bugs & quirks
 
-- **Inconsistent SD "mastered" counts.** `trackStats` (`lib/sd.ts`) counts concepts and patterns as "mastered" at confidence ≥ 4 (`MASTERED_CONFIDENCE`). An item's *status* only becomes `mastered` at rating 5 with ≥ 2 reviews. A dashboard count can therefore exceed the number of items showing a "Mastered" badge.
+- ~~**Inconsistent SD "mastered" counts.**~~ Resolved: there is no "mastered" any more; SD counts completed items.
 - **Inflated `reviewCount` in existing data.** Before the same-day correction fix, re-rating an item several times on one day incremented `reviewCount` each time (e.g. 21 on one concept). Later intervals for those items are longer than intended. A one-off recount from `history` would fix it; that hasn't been run.
 - **Deleted items can come back after an offline merge.** `mergeStates` never drops server-only items, so something deleted on a device that was offline can reappear when another device's copy is merged.
 - **Pattern ratings have no `updatedAt`.** When merging, the local copy always wins for `patterns`, even if it's older.
@@ -81,7 +80,6 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 ## 5. Technical debt
 
 - **Unused settings:** `Settings.navCollapsed` and `Settings.includeSD` are still in the type, `DEFAULT_SETTINGS` and the schema, but nothing reads them.
-- **Unused component:** `ConfidencePicker` in `components/sd/sd-kit.tsx` (replaced by `SDProgressPanel`).
 - **`lib/progress.ts` is large** (~1,150 lines): types, persistence, sync, merge, and DSA and SD mutations in one file. Candidates to split out: `lib/progress/sync.ts`, `dsa.ts`, `sd.ts`, keeping the same exports.
 - **Types are duplicated** between `lib/progress.ts` and `lib/server/schemas.ts`. Deriving the types from zod (`z.infer`) would remove the drift risk.
 - **Two `mean` helpers** (in `lib/stats.ts` and `lib/sd.ts`) and similar scoring code. Could move to `lib/utils.ts`.
@@ -90,9 +88,8 @@ _Last verified against the code on 2026-10-03._ Items are ticked only where the 
 ## 6. Suggested implementation order
 
 1. **Add a test baseline:** unit tests for `reviewInterval`, `logAttempt`, `rateSD` (including the same-day correction), `diff` and `mergeStates`; one Playwright smoke test (login → rate → reload); a GitHub Action running lint, `check:data`, build and tests.
-2. **Data fixes:** align the SD "mastered" definition (pick one rule and use it in both `rateSD` and `trackStats`), and run a one-off `reviewCount` recount from `history`.
-3. **Stop reviews for DSA,** mirroring `setSDReviews` (`reviewOff` on `Entry` plus a schema field and UI on the problem page and revision rows).
-4. **Remove dead code:** `navCollapsed`, `includeSD` (keep accepting them in the schema for old snapshots, or strip them on load), and `ConfidencePicker`.
+2. **Data fixes:** run a one-off `reviewCount` recount from `history`.
+4. **Remove dead code:** `navCollapsed`, `includeSD` (keep accepting them in the schema for old snapshots, or strip them on load), plus the legacy `reviewOff` / `sdAutoReview` fields.
 5. **Move the login rate limiter into MongoDB** (a TTL-indexed `login_attempts` collection).
 6. **Merge tombstones:** record deletions (e.g. `deletedAt`) so offline deletes survive merges; add `updatedAt` to `PatternEntry`.
 7. **Split `lib/progress.ts`** and derive types from the zod schemas.

@@ -2,7 +2,7 @@ import { allPatterns, getTopic, patternIndex } from "@/data/curriculum";
 import { SD_ITEMS, type SDItem } from "@/data/sd";
 import { IMPORTANT } from "@/data/important";
 import { PHASES } from "@/data/study-plan";
-import { isDue, isSolved, needsRevisit, today, type PlanTask, type State } from "./progress";
+import { isDue, isSDDue, isSolved, needsRevisit, today, type PlanTask, type State } from "./progress";
 import { currentPhaseIndex, patternStat } from "./stats";
 
 /**
@@ -67,7 +67,7 @@ function systemDesignTasks(state: State): PlanTask[] {
   const t = today();
   const e = (x: SDItem) => state.sd[x.key];
   const untouched = (x: SDItem) => !e(x)?.history.length;
-  const due = (x: SDItem) => !!e(x)?.nextReview && e(x)!.history.length > 0 && e(x)!.nextReview! <= t;
+  const due = (x: SDItem) => isSDDue(e(x));
   const oldestDue = (xs: SDItem[]) => xs.filter(due).sort((a, b) => e(a)!.nextReview!.localeCompare(e(b)!.nextReview!))[0];
   const task = (x: SDItem, label: string): PlanTask => ({ id: `sd-${x.key}`, kind: x.track, label, sdKey: x.key });
 

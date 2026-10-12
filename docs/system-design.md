@@ -47,38 +47,29 @@ concept:cap-theorem   pattern:circuit-breaker-pattern   problem:url-shortener   
 
 ## Progress model (`lib/progress.ts`)
 
-`SDEntry.status` takes one of four values: `todo`, `learning`, `done` and `mastered`. The UI labels them **Not started**, **Learning**, **Completed** and **Mastered**.
+Reviews work the same way as DSA: completing is one click, and revision is opt-in with a note and a chosen number of days. There is no confidence rating and no "mastered" in the UI.
+
+`SDEntry.status` is `todo`, `learning`, `done` or legacy `mastered`. The UI shows three states via `sdDisplayStatus` (`components/sd/sd-kit.tsx`): **Not started**, **Completed** (`isSDDone`: `done` or `mastered`) and **Needs revision** (`revisit: true`).
 
 | Action | Function | Effect |
 |---|---|---|
-| Rate 1–5 | `rateSD(key, rating, opts)` | The first rating counts as **study**; later ones count as **reviews**, which increment `reviewCount`. Status becomes `done` at rating ≥ 3 and `learning` below that. It becomes `mastered` at rating 5 with ≥ 2 reviews, and stays mastered while ratings are ≥ 4. Sets `nextReview = today + reviewInterval(rating, reviewCount)`, or tomorrow for a rating of 1. **A same-day re-rating corrects today's entry instead of adding a review.** |
-| Mark as complete | `markSDComplete` (`CompleteButton`) | Rates the item at least 3. If `settings.sdAutoReview` is off, it sets `reviewOff` first, so no review is scheduled. |
-| Undo complete | `unmarkSDComplete` | Sets the status back to `learning`; history is kept. |
-| Stop / resume reviews | `setSDReviews(key, on)` | Sets `reviewOff` and clears `nextReview` (stop), or reschedules (resume). Stopped items leave the revision queues. |
-| Review later | `snoozeSD` | Sets `nextReview` to tomorrow without a rating. |
-| Notes / workspace / star | `updateSD(key, patch)` | Saving notes or a workspace on a `todo` item moves it to `learning`. A notes event is logged at most every 10 minutes. |
+| Mark as complete / practiced | `markSDComplete(key, title, kind?)` (`CompleteButton`) | Records a study (or `practice`) entry and sets `done`. Doesn't schedule anything unless the item is in revision. |
+| Undo complete | `unmarkSDComplete` | Sets the status back to `todo`; history is kept. |
+| Add to / edit revision | `addSDToRevision(key, note, days)` (`SDRevisionButton` → shared `RevisionDialogFor`) | Sets `revisit`, `revisionNote` and `nextReview = today + days`. |
+| Remove from revision | `removeSDFromRevision` | Clears `revisit`, the note and `nextReview`. |
+| Revision quick actions | `sdQuickReview(key, "got-it" \| "practice" \| "forgot" \| "later")` (`SDQuickReview`) | Same four buttons as DSA. "Later" moves `nextReview` to tomorrow; the others go through `rateSD` with ratings 4 / 2 / 1. |
+| Internal | `rateSD(key, rating, opts)` | Appends history (a same-day re-rating corrects today's entry). Keeps `done` once completed. Schedules `nextReview` only when `revisit` is set. Also used by interview-mode sessions. |
+| Notes / workspace / star | `updateSD(key, patch)` | Saving notes or a workspace on a `todo` item moves it to `learning` (shown as Not started). A notes event is logged at most every 10 minutes. |
 
-Rating labels: the concept scale is `SD_CONFIDENCE` (Don't know → Can apply) and the review marks are `SD_REVIEW_MARKS` (Forgot → Mastered).
+`isSDDue` requires `revisit` and `nextReview <= today`. Legacy `reviewOff` and `settings.sdAutoReview` are still accepted in stored data but no longer used.
 
-UI building blocks are in `components/sd/sd-kit.tsx`:
-- `SDProgressPanel`: status, Mark as complete, rating, reviews on/off, next review;
-- `SDProgressCard`;
-- `ReviewButtons`;
-- `CompleteButton`;
-- `SDNotes`;
-- `StarToggle`;
-- `SDStatusBadge`;
-- `TrackTag`;
-- `SDItemList`.
+UI building blocks are in `components/sd/sd-kit.tsx`: `SDProgressPanel` (complete, favourite, revision), `SDProgressCard` (problem pages), `CompleteButton`, `SDRevisionButton`, `SDQuickReview`, `SDNotes`, `StarToggle`, `SDStatusBadge`, `TrackTag`, `SDItemList`.
 
 ## Metrics (`lib/sd.ts`)
 
-- **`sdScore`:** 0 if untouched; 1 if mastered; otherwise `min(0.95, 0.2 + 0.15 × confidence)`.
-- **`trackStats`:**
-  - mastery: the mean score;
-  - concepts and patterns: counted as mastered at **confidence ≥ 4** (`MASTERED_CONFIDENCE`);
-  - problems: counted as completed when `isPracticed` (done, mastered, or has a practice or session entry).
-- **Other aggregates:** `categoryStats` (weak when the average rating is below 3), `sdOverview`, `sdPhaseProgress` (the practice phase uses the share of problems practised), `currentSDPhase` (the first phase below 0.6).
+- **`sdScore`:** 1 if completed, else 0 (same as DSA).
+- **`trackStats`:** mastery is the mean score; concepts and patterns count as completed when `isSDDone`; problems count as completed when `isPracticed` (completed, or has a practice or session entry).
+- **Other aggregates:** `categoryStats` (completed count; weak when any concept is in revision), `sdOverview` (includes `inRevision`, soonest first), `sdPhaseProgress`, `currentSDPhase` (the first phase below 0.6).
 
 ## Daily plan
 

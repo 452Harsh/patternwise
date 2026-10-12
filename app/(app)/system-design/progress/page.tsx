@@ -22,8 +22,8 @@ function SDProgress() {
   const phases = sdPhaseProgress(state);
   const cats = [...categoryStats(state, "hld"), ...categoryStats(state, "lld")];
   const tracks = [
-    { label: "HLD", track: "hld" as const, s: o.hld, detail: `${o.hld.concepts.mastered}/${o.hld.concepts.total} concepts strong · ${o.hld.patterns.mastered}/${o.hld.patterns.total} patterns · ${o.hld.problems.completed}/${o.hld.problems.total} problems` },
-    { label: "LLD", track: "lld" as const, s: o.lld, detail: `${o.lld.concepts.mastered}/${o.lld.concepts.total} concepts strong · ${o.lld.patterns.mastered}/${o.lld.patterns.total} patterns · ${o.lld.problems.completed}/${o.lld.problems.total} problems` },
+    { label: "HLD", track: "hld" as const, s: o.hld, detail: `${o.hld.concepts.completed}/${o.hld.concepts.total} concepts · ${o.hld.patterns.completed}/${o.hld.patterns.total} patterns · ${o.hld.problems.completed}/${o.hld.problems.total} problems` },
+    { label: "LLD", track: "lld" as const, s: o.lld, detail: `${o.lld.concepts.completed}/${o.lld.concepts.total} concepts · ${o.lld.patterns.completed}/${o.lld.patterns.total} patterns · ${o.lld.problems.completed}/${o.lld.problems.total} problems` },
   ];
 
   return (
@@ -78,7 +78,7 @@ function SDProgress() {
       <Panel className="p-5">
         <SectionTitle hint="Mastery of the concepts in each category.">Category progress</SectionTitle>
         <ul className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
-          {cats.map(({ category, mastery, started, total }) => (
+          {cats.map(({ category, mastery, completed, total }) => (
             <li key={category.id}>
               <Link href={`/system-design/${category.track}#${category.id}`} className="block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
@@ -87,7 +87,7 @@ function SDProgress() {
                     {category.name}
                   </span>
                   <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                    {started}/{total} · {pct(mastery)}
+                    {completed}/{total} · {pct(mastery)}
                   </span>
                 </div>
                 <Meter value={mastery} tone={masteryTone(mastery)} label={`${category.name} mastery`} />

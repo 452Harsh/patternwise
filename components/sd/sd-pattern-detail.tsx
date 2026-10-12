@@ -10,6 +10,7 @@ import { useStore } from "@/lib/progress";
 import { Block, Bullets } from "./concept-detail";
 import { FlowDiagram } from "./flow-diagram";
 import { CompleteButton, SDNotes, SDProgressPanel, SDStatusBadge, TrackTag } from "./sd-kit";
+import { InterviewQuestions } from "./interview-questions";
 import { UMLDiagram, UMLLegend } from "./uml-diagram";
 
 const LinkChips = ({ items }: { items: { href: string; label: string; extra?: React.ReactNode }[] }) => (
@@ -133,6 +134,11 @@ function LLDBody({ p }: { p: LLDPattern }) {
       <Block id="code" title="Code">
         <CodeBlock code={p.code.python} language="python" />
       </Block>
+      {p.interviewQuestions?.length ? (
+        <Block id="questions" title="Common interview questions" hint="Answer out loud, then open to check.">
+          <InterviewQuestions items={p.interviewQuestions} />
+        </Block>
+      ) : null}
       <Block id="related" title="Related patterns">
         <LinkChips items={p.related.map((id) => ({ href: `/system-design/patterns/${id}`, label: lldPatternById.get(id)?.name ?? id }))} />
       </Block>
@@ -188,7 +194,7 @@ export function SDPatternDetail({ id }: { id: string }) {
           </Block>
         </div>
         <aside className="lg:sticky lg:top-6 lg:self-start" aria-label="Your progress">
-          <SDProgressPanel itemKey={key} title={name} prompt="Could you sketch it and name its trade-offs from memory?" />
+          <SDProgressPanel itemKey={key} title={name} />
         </aside>
       </div>
     </div>

@@ -45,7 +45,7 @@ Conventions:
 | `DailyPlan tracks` | `components/daily-plan.tsx` | Today's tasks for one module |
 | `NotesView scope` | `components/notes-view.tsx` | The notes pages |
 | `CodeBlock` | `components/code-block.tsx` | Syntax-highlighted code |
-| SD kit (`SDProgressPanel`, `CompleteButton`, `ReviewButtons`, `SDNotes`, `StarToggle`, `SDStatusBadge`, `TrackTag`, `SDItemList`) | `components/sd/sd-kit.tsx` | Any SD item page |
+| SD kit (`SDProgressPanel`, `CompleteButton`, `SDRevisionButton`, `SDQuickReview`, `SDNotes`, `StarToggle`, `SDStatusBadge`, `TrackTag`, `SDItemList`) | `components/sd/sd-kit.tsx` | Any SD item page |
 | Workspace kit (`WSection`, `StringList`, `RowsEditor`, `PromptField`, `Hints`, `rid`) | `components/sd/workspace-kit.tsx` | HLD/LLD workspace sections |
 | `FlowDiagram`, `UMLDiagram` | `components/sd/flow-diagram.tsx`, `uml-diagram.tsx` | Visual explanations |
 

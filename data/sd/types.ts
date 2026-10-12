@@ -51,11 +51,17 @@ export interface SDConcept {
   flow?: FlowSpec;
   pros: string[];
   cons: string[];
-  interviewQuestions: string[];
+  /** Plain questions, or question + answer (shown as a dropdown). */
+  interviewQuestions: (string | InterviewQA)[];
   /** Related concept ids (same or other track). */
   related: string[];
   /** LLD concepts: a short illustrative snippet. */
   example?: { language: "java" | "python" | "typescript" | "cpp"; code: string };
+}
+
+export interface InterviewQA {
+  q: string;
+  a: string;
 }
 
 export interface HLDPattern {
@@ -105,6 +111,7 @@ export interface LLDPattern {
   advantages: string[];
   disadvantages: string[];
   code: { python: string };
+  interviewQuestions?: InterviewQA[];
   /** LLD pattern ids */
   related: string[];
   /** LLD problem ids */

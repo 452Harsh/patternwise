@@ -7,14 +7,14 @@ import { EmptyState, PageHeader } from "@/components/kit";
 import { NativeSelect } from "@/components/native-select";
 import { SDItemList } from "@/components/sd/sd-kit";
 import { SD_CATEGORIES, SD_ITEMS } from "@/data/sd";
-import { SD_CONFIDENCE, isSDDue, useStore } from "@/lib/progress";
+import { isSDDone, isSDDue, useStore } from "@/lib/progress";
 
 export default function ConceptsPage() {
   const state = useStore();
   const [q, setQ] = useState("");
   const [track, setTrack] = useState("all");
   const [category, setCategory] = useState("all");
-  const [confidence, setConfidence] = useState("all");
+  const [status, setStatus] = useState("all");
 
   const concepts = SD_ITEMS.filter((x) => x.kind === "concept");
   const categories = SD_CATEGORIES.filter((c) => track === "all" || c.track === track);
@@ -26,13 +26,13 @@ export default function ConceptsPage() {
       if (needle && !`${x.title} ${x.summary} ${x.group}`.toLowerCase().includes(needle)) return false;
       if (track !== "all" && x.track !== track) return false;
       if (category !== "all" && x.group !== SD_CATEGORIES.find((c) => c.id === category)?.name) return false;
-      if (confidence === "unrated" && e?.confidence) return false;
-      if (confidence === "low" && !(e?.confidence && e.confidence <= 2)) return false;
-      if (confidence === "strong" && !((e?.confidence ?? 0) >= 4)) return false;
-      if (confidence === "due" && !isSDDue(e)) return false;
+      if (status === "todo" && isSDDone(e)) return false;
+      if (status === "done" && !isSDDone(e)) return false;
+      if (status === "revision" && !e?.revisit) return false;
+      if (status === "due" && !isSDDue(e)) return false;
       return true;
     });
-  }, [concepts, state.sd, q, track, category, confidence]);
+  }, [concepts, state.sd, q, track, category, status]);
 
   return (
     <div className="space-y-6">
@@ -59,11 +59,11 @@ export default function ConceptsPage() {
             </option>
           ))}
         </NativeSelect>
-        <NativeSelect aria-label="Confidence" value={confidence} onChange={(e) => setConfidence(e.target.value)}>
-          <option value="all">Any confidence</option>
-          <option value="unrated">{SD_CONFIDENCE[0]}</option>
-          <option value="low">Low (Don&apos;t know / Familiar)</option>
-          <option value="strong">Strong (Can explain / Can apply)</option>
+        <NativeSelect aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="all">Any status</option>
+          <option value="todo">Not started</option>
+          <option value="done">Completed</option>
+          <option value="revision">In revision</option>
           <option value="due">Due for review</option>
         </NativeSelect>
         <span className="text-sm text-muted-foreground">
