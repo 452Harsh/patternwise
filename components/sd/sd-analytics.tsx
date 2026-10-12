@@ -7,7 +7,7 @@ import { EmptyState, Panel, SectionTitle } from "@/components/kit";
 import { relativeDay } from "@/lib/format";
 import { useStore } from "@/lib/progress";
 import { sdOverview } from "@/lib/sd";
-import { activityByDay, streaks } from "@/lib/stats";
+import { activityByDay, streaks } from "@/lib/activity";
 import { TrackTag } from "./sd-kit";
 
 /** System Design analytics: activity, streaks, items learned over time, and what's in revision. */

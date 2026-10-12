@@ -7,21 +7,24 @@ type WithId = Document & { _id: string };
 
 const strip = <T extends Document>({ _id, ...rest }: T) => ({ ...rest, __id: _id as string });
 
+// Return each collection in one round trip (the driver's default first batch is 101 documents).
+const BIG_BATCH = { batchSize: 1000 } as const;
+
 /** Read every collection and assemble the client-side State shape. */
 export async function loadState() {
   const d = await db();
   const [progress, patterns, custom, companies, mocks, events, meta, sd, diagrams, sdCustom, sdSessions] = await Promise.all([
-    d.collection<WithId>(COLLECTIONS.progress).find().toArray(),
-    d.collection<WithId>(COLLECTIONS.patterns).find().toArray(),
-    d.collection<WithId>(COLLECTIONS.custom).find().sort({ createdAt: 1 }).toArray(),
-    d.collection<WithId>(COLLECTIONS.companies).find().sort({ createdAt: 1 }).toArray(),
-    d.collection<WithId>(COLLECTIONS.mocks).find().sort({ date: -1 }).toArray(),
-    d.collection<WithId>(COLLECTIONS.events).find().sort({ at: -1 }).limit(300).toArray(),
+    d.collection<WithId>(COLLECTIONS.progress).find({}, BIG_BATCH).toArray(),
+    d.collection<WithId>(COLLECTIONS.patterns).find({}, BIG_BATCH).toArray(),
+    d.collection<WithId>(COLLECTIONS.custom).find({}, BIG_BATCH).sort({ createdAt: 1 }).toArray(),
+    d.collection<WithId>(COLLECTIONS.companies).find({}, BIG_BATCH).sort({ createdAt: 1 }).toArray(),
+    d.collection<WithId>(COLLECTIONS.mocks).find({}, BIG_BATCH).sort({ date: -1 }).toArray(),
+    d.collection<WithId>(COLLECTIONS.events).find({}, BIG_BATCH).sort({ at: -1 }).limit(300).toArray(),
     d.collection<WithId>(COLLECTIONS.meta).findOne({ _id: "meta" }),
-    d.collection<WithId>(COLLECTIONS.sd).find().toArray(),
-    d.collection<WithId>(COLLECTIONS.diagrams).find().toArray(),
-    d.collection<WithId>(COLLECTIONS.sdCustom).find().sort({ createdAt: 1 }).toArray(),
-    d.collection<WithId>(COLLECTIONS.sdSessions).find().sort({ startedAt: -1 }).toArray(),
+    d.collection<WithId>(COLLECTIONS.sd).find({}, BIG_BATCH).toArray(),
+    d.collection<WithId>(COLLECTIONS.diagrams).find({}, BIG_BATCH).toArray(),
+    d.collection<WithId>(COLLECTIONS.sdCustom).find({}, BIG_BATCH).sort({ createdAt: 1 }).toArray(),
+    d.collection<WithId>(COLLECTIONS.sdSessions).find({}, BIG_BATCH).sort({ startedAt: -1 }).toArray(),
   ]);
 
   const byId = (docs: WithId[]) =>

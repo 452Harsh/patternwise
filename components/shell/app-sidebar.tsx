@@ -7,13 +7,13 @@ import { Flame, LogOut, PanelLeftClose, PanelLeftOpen, Search } from "lucide-rea
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/kit";
 import { isDue, isSDDue, logout, needsRevisit, updateSettings, useHydrated, useStore } from "@/lib/progress";
-import { streaks } from "@/lib/stats";
+import { streaks } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 import { useModule } from "./module";
 import { ModuleSwitcher } from "./module-switcher";
 import { MODULES, SHARED_NAV, isActive, navItems, type ModuleId, type NavItem } from "./nav";
 import { ThemeToggle } from "./theme-toggle";
-import { openCommandMenu } from "./command-menu";
+import { openCommandMenu, preloadCommandMenu } from "./command-menu";
 import { SyncIndicator } from "./sync-boot";
 
 export function Logo({ collapsed, href = "/" }: { collapsed?: boolean; href?: string }) {
@@ -89,6 +89,8 @@ export function AppSidebar() {
         <button
           type="button"
           onClick={openCommandMenu}
+          onPointerEnter={preloadCommandMenu}
+          onFocus={preloadCommandMenu}
           className={cn(
             "flex h-8 w-full items-center gap-2 rounded-lg border border-sidebar-border bg-background/40 px-2 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
             !wide && "justify-center",

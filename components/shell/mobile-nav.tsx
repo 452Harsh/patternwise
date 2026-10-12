@@ -6,10 +6,10 @@ import { useState } from "react";
 import { LogOut, Menu, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { logout, useHydrated, useStore } from "@/lib/progress";
-import { streaks } from "@/lib/stats";
+import { streaks } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 import { Logo, useRevisionBadges } from "./app-sidebar";
-import { openCommandMenu } from "./command-menu";
+import { openCommandMenu, preloadCommandMenu } from "./command-menu";
 import { useModule } from "./module";
 import { ModuleSwitcher } from "./module-switcher";
 import { MODULES, SHARED_NAV, isActive, navItems } from "./nav";
@@ -37,6 +37,8 @@ export function MobileNav() {
           <button
             type="button"
             onClick={openCommandMenu}
+            onPointerEnter={preloadCommandMenu}
+            onFocus={preloadCommandMenu}
             aria-label={`Search ${def.label}`}
             className="grid size-9 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
           >

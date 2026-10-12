@@ -124,3 +124,16 @@ The app is two independent preparation environments sharing one shell, store, da
 | Daily plan (DSA + SD tasks) | `buildDailyPlan`, `systemDesignTasks` | `lib/plan.ts` |
 | Streaks / activity calendar | `streaks(state, scope)`, `activityByDay(state, scope)` | `lib/stats.ts` |
 | Diff / merge | `diff`, `mergeStates`, `replayLocalEdits` | `lib/progress.ts` |
+
+## Performance notes (Oct 2026)
+
+Measured with Lighthouse 13 against a local production build and the `patternwise_test` database; see the PR/commit message for numbers. Keep these in place:
+
+- **Stale-while-revalidate hydration.** `useHydrated()` is true as soon as this browser has a local copy, so pages render from localStorage immediately and `/api/state` refreshes them in the background. Only a device with no local copy waits for the server.
+- **Keep content out of the shared bundle.** The app shell must not import `data/` (directly or via `lib/stats`, `lib/catalog`, `lib/sd`, `lib/plan`):
+  - `streaks` / `activityByDay` live in `lib/activity.ts` (re-exported from `lib/stats`).
+  - The ⌘K list is `components/shell/command-palette.tsx`, loaded with `next/dynamic` on first open (and preloaded on hover/focus of the search button). Keyboard shortcuts stay in the light `command-menu.tsx`.
+  - recharts-based charts and the pattern heatmap are in `components/charts-heavy.tsx`, loaded on demand through the wrappers in `components/charts.tsx`.
+- **`/api/state` GET** is compressed in the handler (`compressedJson`: brotli, else gzip) and sends `Server-Timing: db;dur=…`. It stays `Cache-Control: no-store` (private data).
+- **MongoDB:** reads use `batchSize: 1000` (one round trip per collection), the pool is 16 (the load runs 11 queries in parallel), and `ensureIndexes` runs in the background instead of blocking the first request on a cold start.
+- **Not done (would need a write-path change):** projecting fields out of `/api/state`. Saves use `replaceOne`, so a client that never received a field would erase it on its next save.

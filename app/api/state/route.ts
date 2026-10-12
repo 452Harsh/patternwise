@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { isAuthed, isJson, json, serverError } from "@/lib/server/http";
+import { compressedJson, isAuthed, isJson, json, serverError } from "@/lib/server/http";
 import { applyPatch, loadState } from "@/lib/server/repo";
 import { PatchSchema } from "@/lib/server/schemas";
 
@@ -7,7 +7,9 @@ import { PatchSchema } from "@/lib/server/schemas";
 export async function GET(req: NextRequest) {
   if (!isAuthed(req)) return json({ error: "Unauthorized" }, 401);
   try {
-    return json(await loadState());
+    const t = performance.now();
+    const state = await loadState();
+    return compressedJson(req, state, { "Server-Timing": `db;dur=${Math.round(performance.now() - t)}` });
   } catch (err) {
     return serverError(err);
   }

@@ -9,7 +9,8 @@ const globalForMongo = globalThis as unknown as { _mongo?: Promise<MongoClient>;
 
 function client(): Promise<MongoClient> {
   if (!uri) throw new Error("MONGODB_URI is not set. Add it to .env.local.");
-  globalForMongo._mongo ??= new MongoClient(uri, { maxPoolSize: 10, serverSelectionTimeoutMS: 10_000 }).connect();
+  // loadState runs 11 queries in parallel, so the pool must hold at least that many connections.
+  globalForMongo._mongo ??= new MongoClient(uri, { maxPoolSize: 16, serverSelectionTimeoutMS: 10_000 }).connect();
   return globalForMongo._mongo;
 }
 
@@ -29,8 +30,12 @@ export const COLLECTIONS = {
 
 export async function db(): Promise<Db> {
   const d = (await client()).db(dbName);
-  globalForMongo._indexes ??= ensureIndexes(d);
-  await globalForMongo._indexes;
+  // Idempotent; runs once per server instance in the background so it never delays a request
+  // (on a serverless cold start it used to add several round trips to the first load).
+  globalForMongo._indexes ??= ensureIndexes(d).catch((err) => {
+    console.error("ensureIndexes failed", err);
+    globalForMongo._indexes = undefined;
+  });
   return d;
 }
 

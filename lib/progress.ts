@@ -715,9 +715,17 @@ export const useProgress = (): ProgressMap => useStore().problems;
 export const usePatternProgress = (): State["patterns"] => useStore().patterns;
 
 /** True once data is available: loaded from the server, or the local copy while offline. */
+const noopSubscribe = () => () => {};
+
+/**
+ * True once there is data to show. Renders the browser's local copy straight away
+ * (stale-while-revalidate) and only waits for the server when this device has no copy yet.
+ */
 export const useHydrated = () => {
   const s = useSyncStatus();
-  return s !== "idle" && s !== "loading";
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  if (!mounted) return false;
+  return (s !== "idle" && s !== "loading") || hasData(read());
 };
 
 /* ---------- mutations ---------- */
