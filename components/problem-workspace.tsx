@@ -176,8 +176,9 @@ function useTimer() {
       setStart(Date.now());
       setNow(Date.now());
     },
+    /** Stops the timer and returns the exact seconds elapsed (0 if it wasn't running). */
     stop: () => {
-      const e = elapsed;
+      const e = start === null ? 0 : Math.max(0, Math.round((Date.now() - start) / 1000));
       setStart(null);
       return e;
     },
@@ -232,7 +233,8 @@ function Workspace({ item }: { item: CatalogItem }) {
       action: { label: "Undo", onClick: () => updateEntry(problem.slug, before) },
     });
   };
-  const stopAndSolve = () => markAsSolved(timer.stop());
+  // Marking as solved always stops a running timer and records the time.
+  const stopAndSolve = () => markAsSolved(timer.running ? timer.stop() : undefined);
 
   return (
     <div className="space-y-8">
@@ -276,7 +278,7 @@ function Workspace({ item }: { item: CatalogItem }) {
                 <CircleCheck data-icon="inline-start" className="text-success" /> Solved
               </Button>
             ) : (
-              <Button onClick={() => markAsSolved()}>
+              <Button onClick={stopAndSolve}>
                 <CircleCheck data-icon="inline-start" /> Mark as solved
               </Button>
             )}
